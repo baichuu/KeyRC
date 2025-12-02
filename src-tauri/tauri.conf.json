@@ -13,15 +13,14 @@
     "windows": [
       {
         "title": "keyrc",
-        "width": 400,
-        "height": 150,
+        "width": 333,
+        "height": 100,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": false,
-        "x": 100,
-        "y": 100
+        "focus": false
       }
     ],
     "security": {
@@ -29,8 +28,8 @@
     }
   },
   "bundle": {
-    "active": true,
-    "targets": "all",
+    "active": false,
+    "targets": [],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

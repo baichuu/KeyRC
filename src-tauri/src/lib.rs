@@ -2,7 +2,7 @@ use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 use std::sync::mpsc;
 use std::thread;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 #[derive(Clone, Serialize)]
 struct KeyEvent {
@@ -187,6 +187,9 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             start_keyboard_listener(handle);
+
+
+
             Ok(())
         })
         .run(tauri::generate_context!())

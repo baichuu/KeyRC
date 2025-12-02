@@ -1,156 +1,138 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { onMount } from "svelte";
 
-  let name = $state("");
-  let greetMsg = $state("");
+interface KeyEvent {
+	key: string;
+	modifiers: string[];
+	event_type: string;
+}
 
-  async function greet(event: Event) {
-    event.preventDefault();
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsg = await invoke("greet", { name });
-  }
+interface StoredKey {
+	key: string;
+	shift: boolean;
+}
+
+const keyAliases: Record<string, string> = {
+	"Backspace": "⌫",
+	"Enter": "↵",
+	"Tab": "⇥",
+	"Space": "␣",
+	"Escape": "Esc",
+	"Delete": "⌦",
+	"Home": "⇱",
+	"End": "⇲",
+	"PageUp": "PgUp",
+	"PageDown": "PgDn",
+	"Insert": "Ins",
+	"CapsLock": "⇪",
+	"PrintScreen": "PrtSc",
+	"ScrollLock": "ScrLk",
+	"Pause": "⏸",
+	"NumLock": "Num",
+};
+
+let keyHistory = $state<StoredKey[]>([]);
+let activeModifiers = $state<string[]>([]);
+
+function startDrag() {
+	getCurrentWindow().startDragging();
+}
+
+function displayKey(stored: StoredKey): string {
+	const { key, shift } = stored;
+	if (keyAliases[key]) return keyAliases[key];
+	if (key.length === 1) {
+		return shift ? key.toUpperCase() : key.toLowerCase();
+	}
+	return key;
+}
+
+onMount(() => {
+	listen<KeyEvent>("key-event", (event) => {
+		const { key, modifiers } = event.payload;
+
+		activeModifiers = modifiers;
+		const shift = modifiers.includes("Shift");
+		keyHistory = [{ key, shift }, ...keyHistory].slice(0, 4);
+	});
+});
 </script>
 
-<main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
-
-  <div class="row">
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
-    </a>
-  </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
-
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name} />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{greetMsg}</p>
+<main
+  onmousedown={startDrag}
+	class="w-full h-screen cursor-move flex flex-col justify-center items-center gap-1"
+>
+	<div
+		class="bg-black/90 backdrop-blur-md flex-1 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden"
+	>
+		<h1 class="text-6xl truncate px-4 py-2">{keyHistory.toReversed().map(displayKey).join("")}</h1>
+	</div>
+	<div class="h-14 shrink-0 grid grid-cols-4 gap-1 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden">
+		<div class="flex items-center justify-center bg-black/90 backdrop-blur-md transition-colors {activeModifiers.includes('Shift') ? 'text-white' : 'text-white/30'}">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="2em"
+				height="2em"
+				viewBox="0 0 16 16"
+			>
+				<title>shift</title>
+				<path
+					fill="currentColor"
+					d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5L8 2.731L1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"
+				/>
+			</svg>
+		</div>
+		<div class="flex items-center justify-center bg-black/90 backdrop-blur-md transition-colors {activeModifiers.includes('Ctrl') ? 'text-white' : 'text-white/30'}">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="2em"
+				height="2em"
+				viewBox="0 0 16 16"
+			>
+				<title>ctrl</title>
+				<path
+					fill="currentColor"
+					d="M11.5 7a.5.5 0 0 1-.377-.171l-3.124-3.57l-3.124 3.57a.5.5 0 1 1-.753-.659l3.5-4a.502.502 0 0 1 .752 0l3.5 4a.5.5 0 0 1-.376.83z"
+				/>
+			</svg>
+		</div>
+		<div class="flex items-center justify-center bg-black/90 backdrop-blur-md transition-colors {activeModifiers.includes('Alt') ? 'text-white' : 'text-white/30'}">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="2em"
+				height="2em"
+				viewBox="0 0 24 24"
+			>
+				<title>alt</title>
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M3 5.25h5.625l6.75 13.5H21m-6.75-13.5H21"
+				/>
+			</svg>
+		</div>
+		<div class="flex items-center justify-center bg-black/90 backdrop-blur-md transition-colors {activeModifiers.includes('Super') ? 'text-white' : 'text-white/30'}">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="2em"
+				height="2em"
+				viewBox="0 0 24 24"
+			>
+				<title>command</title>
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M15.012 5.977v12.046c0 2.645 3.316 3.954 5.14 2.13c1.825-1.825.516-5.141-2.13-5.141H5.978c-2.645 0-3.953 3.316-2.13 5.14c1.825 1.825 5.142.516 5.142-2.13V5.978c0-2.645-3.317-3.953-5.141-2.13c-1.824 1.825-.516 5.142 2.13 5.142h12.045c2.645 0 3.954-3.317 2.13-5.141s-5.141-.516-5.141 2.13"
+				/>
+			</svg>
+		</div>
+	</div>
 </main>
-
-<style>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
-}
-
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
-</style>
