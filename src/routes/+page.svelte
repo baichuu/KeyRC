@@ -15,6 +15,7 @@ interface StoredKey {
 }
 
 const svgKeys = ["Backspace", "Enter", "Tab", "Space", "Delete", "Escape"];
+const WPM_WINDOW_MS = 10000; // 10 second window for WPM calculation
 
 const textAliases: Record<string, string> = {
 	Home: "Home",
@@ -28,6 +29,8 @@ const textAliases: Record<string, string> = {
 
 let keyHistory = $state<StoredKey[]>([]);
 let activeModifiers = $state<string[]>([]);
+let keyTimestamps = $state<number[]>([]);
+let wpm = $state(0);
 
 function startDrag() {
 	getCurrentWindow().startDragging();
@@ -46,6 +49,25 @@ function displayKey(stored: StoredKey): string {
 	return key;
 }
 
+function isTypingKey(key: string): boolean {
+	return key.length === 1 || key === "Space";
+}
+
+function calculateWpm() {
+	const now = Date.now();
+	keyTimestamps = keyTimestamps.filter(t => now - t < WPM_WINDOW_MS);
+	
+	if (keyTimestamps.length < 2) {
+		wpm = 0;
+		return;
+	}
+	
+	const chars = keyTimestamps.length;
+	const timeSpanMs = now - keyTimestamps[keyTimestamps.length - 1];
+	const minutes = Math.max(timeSpanMs / 60000, WPM_WINDOW_MS / 60000);
+	wpm = Math.round((chars / 5) / minutes);
+}
+
 onMount(() => {
 	const unlistenPromise = listen<KeyEvent>("key-event", (event) => {
 		const { key, modifiers } = event.payload;
@@ -53,10 +75,18 @@ onMount(() => {
 		activeModifiers = modifiers;
 		const shift = modifiers.includes("Shift");
 		keyHistory = [{ key, shift }, ...keyHistory].slice(0, 4);
+
+		if (isTypingKey(key)) {
+			keyTimestamps = [Date.now(), ...keyTimestamps].slice(0, 100);
+			calculateWpm();
+		}
 	});
+
+	const wpmInterval = setInterval(calculateWpm, 1000);
 
 	return () => {
 		unlistenPromise.then((unlisten) => unlisten());
+		clearInterval(wpmInterval);
 	};
 });
 </script>
@@ -67,7 +97,7 @@ onMount(() => {
 	class="w-full h-screen cursor-move flex flex-col justify-center items-center gap-0.5"
 >
 	<div
-		class="bg-black/90 h-32 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1"
+		class="bg-black/90 h-32 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1 relative"
 	>
 		{#each keyHistory.toReversed() as stored}
 			{#if isSvgKey(stored.key)}
@@ -88,6 +118,9 @@ onMount(() => {
 				<span class="text-5xl">{displayKey(stored)}</span>
 			{/if}
 		{/each}
+    <p class="absolute top-2 right-3 text-xl text-white/30 text-center">
+      {wpm}
+    </p>
 	</div>
 	<div
 		class="h-14 shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden"
