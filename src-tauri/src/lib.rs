@@ -1,6 +1,6 @@
 use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
-use std::sync::mpsc;
+use std::sync::mpsc::sync_channel;
 use std::thread;
 use tauri::{AppHandle, Emitter};
 
@@ -138,43 +138,41 @@ fn is_modifier(key: &Key) -> bool {
 
 fn start_keyboard_listener(app_handle: AppHandle) {
     thread::spawn(move || {
-        let (tx, rx) = mpsc::channel::<Event>();
+        let (tx, rx) = sync_channel::<Event>(32);
 
         thread::spawn(move || {
             listen(move |event| {
-                let _ = tx.send(event);
+                let _ = tx.try_send(event);
             })
             .expect("Could not listen to events");
         });
 
-        let mut modifiers: Vec<String> = Vec::new();
+        let mut modifiers: Vec<String> = Vec::with_capacity(4);
 
-        loop {
-            if let Ok(event) = rx.recv() {
-                match event.event_type {
-                    EventType::KeyPress(key) => {
-                        if is_modifier(&key) {
-                            let key_str = key_to_string(key);
-                            if !modifiers.contains(&key_str) {
-                                modifiers.push(key_str);
-                            }
-                        } else {
-                            let key_event = KeyEvent {
-                                key: key_to_string(key),
-                                modifiers: modifiers.clone(),
-                                event_type: "press".to_string(),
-                            };
-                            let _ = app_handle.emit("key-event", key_event);
+        while let Ok(event) = rx.recv() {
+            match event.event_type {
+                EventType::KeyPress(key) => {
+                    if is_modifier(&key) {
+                        let key_str = key_to_string(key);
+                        if !modifiers.contains(&key_str) {
+                            modifiers.push(key_str);
                         }
+                    } else {
+                        let key_event = KeyEvent {
+                            key: key_to_string(key),
+                            modifiers: modifiers.clone(),
+                            event_type: "press".to_string(),
+                        };
+                        let _ = app_handle.emit("key-event", key_event);
                     }
-                    EventType::KeyRelease(key) => {
-                        if is_modifier(&key) {
-                            let key_str = key_to_string(key);
-                            modifiers.retain(|m| m != &key_str);
-                        }
-                    }
-                    _ => {}
                 }
+                EventType::KeyRelease(key) => {
+                    if is_modifier(&key) {
+                        let key_str = key_to_string(key);
+                        modifiers.retain(|m| m != &key_str);
+                    }
+                }
+                _ => {}
             }
         }
     });
