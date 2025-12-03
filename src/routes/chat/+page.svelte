@@ -50,6 +50,7 @@ function getCachedTheme(): Theme {
 let theme = $state<Theme>(getCachedTheme());
 let chatFontSize = $state(18);
 let showTimestamp = $state(true);
+let chatBgOpacity = $state(100);
 
 const shiftedKeys: Record<string, string> = {
 	"1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
@@ -95,6 +96,7 @@ function loadSettings() {
 		const settings = JSON.parse(saved);
 		chatFontSize = settings.chatFontSize ?? 18;
 		showTimestamp = settings.showTimestamp ?? true;
+		chatBgOpacity = settings.chatBgOpacity ?? 100;
 	}
 }
 
@@ -102,12 +104,12 @@ onMount(() => {
 	loadTheme();
 	loadSettings();
 	
-	// Set fullscreen manually
+	// Set window to screen size immediately
 	const win = getCurrentWindow();
-	const width = window.screen.width;
-	const height = window.screen.height;
+	const screenWidth = window.screen.width;
+	const screenHeight = window.screen.height;
 	win.setPosition(new LogicalPosition(0, 0));
-	win.setSize(new LogicalSize(width, height));
+	win.setSize(new LogicalSize(screenWidth, screenHeight));
 	win.setFullscreen(true);
 
 	const unlistenPromise = listen<KeyEvent>("key-event", (event) => {
@@ -166,7 +168,7 @@ onMount(() => {
 
 <div
 	class="fixed inset-0 flex flex-col justify-end p-8"
-	style="background-color: {theme.bg};"
+	style="background-color: {theme.bg}{Math.round(chatBgOpacity * 2.55).toString(16).padStart(2, '0')};"
 >
 	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto flex flex-col justify-end gap-3 mb-4 px-4">
 		{#each messages as message}
