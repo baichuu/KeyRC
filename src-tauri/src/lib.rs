@@ -22,7 +22,7 @@ fn key_to_string(key: Key) -> String {
         Key::Delete => "Delete".to_string(),
         Key::DownArrow => "↓".to_string(),
         Key::End => "End".to_string(),
-        Key::Escape => "Esc".to_string(),
+        Key::Escape => "Escape".to_string(),
         Key::F1 => "F1".to_string(),
         Key::F2 => "F2".to_string(),
         Key::F3 => "F3".to_string(),
@@ -118,8 +118,12 @@ fn key_to_string(key: Key) -> String {
         Key::Kp9 => "9".to_string(),
         Key::KpDelete => "Delete".to_string(),
         Key::Function => "Fn".to_string(),
-        Key::Unknown(code) => format!("Key{}", code),
+        Key::Unknown(_) => String::new(),
     }
+}
+
+fn should_skip_key(key: &Key) -> bool {
+    matches!(key, Key::Unknown(_) | Key::Function)
 }
 
 fn is_modifier(key: &Key) -> bool {
@@ -152,6 +156,9 @@ fn start_keyboard_listener(app_handle: AppHandle) {
         while let Ok(event) = rx.recv() {
             match event.event_type {
                 EventType::KeyPress(key) => {
+                    if should_skip_key(&key) {
+                        continue;
+                    }
                     if is_modifier(&key) {
                         let key_str = key_to_string(key);
                         if !modifiers.contains(&key_str) {
