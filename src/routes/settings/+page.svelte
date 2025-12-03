@@ -4,7 +4,7 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import { homeDir } from "@tauri-apps/api/path";
 
 interface Settings {
-	fontSize: string;
+	fontSize: number;
 	fontFamily: string;
 	textColor: string;
 }
@@ -29,14 +29,6 @@ const defaultTheme: Theme = {
 	grey: "#5f6675",
 };
 
-const fontSizes = [
-	{ label: "2XL", value: "text-2xl" },
-	{ label: "3XL", value: "text-3xl" },
-	{ label: "4XL", value: "text-4xl" },
-	{ label: "5XL", value: "text-5xl" },
-	{ label: "6XL", value: "text-6xl" },
-];
-
 const fonts = [
 	{ label: "Roboto Mono", value: "Roboto Mono" },
 	{ label: "JetBrains Mono", value: "JetBrains Mono" },
@@ -49,7 +41,7 @@ const presetColors = [
 ];
 
 const defaultSettings: Settings = {
-	fontSize: "text-5xl",
+	fontSize: 48,
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
 };
@@ -106,7 +98,7 @@ onMount(() => {
 });
 </script>
 
-<div class="h-screen p-8 overflow-hidden" style="background-color: {theme.bg}; color: {theme.fg};">
+<div class="min-h-screen p-8 overflow-auto" style="background-color: {theme.bg}; color: {theme.fg};">
 	<div class="space-y-6">
 		<div>
 			<label class="block text-sm mb-2" style="color: {theme.grey};">Font Family</label>
@@ -124,18 +116,16 @@ onMount(() => {
 		</div>
 
 		<div>
-			<label class="block text-sm mb-2" style="color: {theme.grey};">Font Size</label>
-			<div class="grid grid-cols-5 gap-2">
-				{#each fontSizes as size}
-					<button
-						onclick={() => { settings.fontSize = size.value; saveSettings(); }}
-						class="px-3 py-2 rounded border"
-						style="background-color: {settings.fontSize === size.value ? theme.blue : theme.bg_dark}; border-color: {settings.fontSize === size.value ? theme.blue : theme.border}; color: {theme.fg};"
-					>
-						{size.label}
-					</button>
-				{/each}
-			</div>
+			<label class="block text-sm mb-2" style="color: {theme.grey};">Font Size: {settings.fontSize}px</label>
+			<input
+				type="range"
+				min="24"
+				max="72"
+				bind:value={settings.fontSize}
+				oninput={saveSettings}
+				class="w-full h-2 rounded-lg appearance-none cursor-pointer"
+				style="background: linear-gradient(to right, {theme.blue} 0%, {theme.blue} {((settings.fontSize - 24) / 48) * 100}%, {theme.bg_dark} {((settings.fontSize - 24) / 48) * 100}%, {theme.bg_dark} 100%); --thumb-bg: {theme.bg}; --thumb-border: {theme.blue};"
+			/>
 		</div>
 
 		<div>
@@ -165,7 +155,7 @@ onMount(() => {
 				class="rounded-xl p-6 flex items-center justify-center bg-black/90"
 				style="color: {settings.textColor}; font-family: {settings.fontFamily};"
 			>
-				<span class="{settings.fontSize}">Abc 123</span>
+				<span style="font-size: {settings.fontSize}px;">Abc 123</span>
 			</div>
 		</div>
 
@@ -178,3 +168,25 @@ onMount(() => {
 		</button>
 	</div>
 </div>
+
+<style>
+	input[type="range"]::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		background: var(--thumb-bg);
+		border: 2px solid var(--thumb-border);
+		cursor: pointer;
+	}
+
+	input[type="range"]::-moz-range-thumb {
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		background: var(--thumb-bg);
+		border: 2px solid var(--thumb-border);
+		cursor: pointer;
+	}
+</style>
