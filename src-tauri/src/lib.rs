@@ -2,7 +2,11 @@ use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 use std::sync::mpsc::sync_channel;
 use std::thread;
-use tauri::{AppHandle, Emitter};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+};
 
 #[derive(Clone, Serialize)]
 struct KeyEvent {
@@ -189,11 +193,45 @@ fn start_keyboard_listener(app_handle: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let handle = app.handle().clone();
             start_keyboard_listener(handle);
 
+            let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&settings_item, &quit_item])?;
 
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("KeyRC")
+                .menu(&menu)
+                .on_menu_event(|app_handle, event| {
+                    match event.id.as_ref() {
+                        "settings" => {
+                            if let Some(window) = app_handle.get_webview_window("settings") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                let _ = WebviewWindowBuilder::new(
+                                    app_handle,
+                                    "settings",
+                                    WebviewUrl::App("/settings".into()),
+                                )
+                                .title("Settings")
+                                .inner_size(500.0, 620.0)
+                                .resizable(false)
+                                .center()
+                                .build();
+                            }
+                        }
+                        "quit" => {
+                            app_handle.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
 
             Ok(())
         })
