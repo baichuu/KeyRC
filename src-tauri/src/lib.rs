@@ -169,8 +169,31 @@ fn start_keyboard_listener(app_handle: AppHandle) {
                             modifiers.push(key_str);
                         }
                     } else {
+                        let key_str = key_to_string(key);
+                        
+                        // F9 to open chat
+                        if key_str == "F9" {
+                            if let Some(window) = app_handle.get_webview_window("chat") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            } else {
+                                let _ = WebviewWindowBuilder::new(
+                                    &app_handle,
+                                    "chat",
+                                    WebviewUrl::App("/chat".into()),
+                                )
+                                .title("Chat")
+                                .decorations(false)
+                                .always_on_top(true)
+                                .skip_taskbar(true)
+                                .transparent(true)
+                                .build();
+                            }
+                            continue;
+                        }
+                        
                         let key_event = KeyEvent {
-                            key: key_to_string(key),
+                            key: key_str,
                             modifiers: modifiers.clone(),
                             event_type: "press".to_string(),
                         };

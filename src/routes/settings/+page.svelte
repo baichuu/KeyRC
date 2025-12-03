@@ -7,6 +7,7 @@ interface Settings {
 	fontSize: number;
 	fontFamily: string;
 	textColor: string;
+	chatFontSize: number;
 }
 
 interface Theme {
@@ -44,6 +45,7 @@ const defaultSettings: Settings = {
 	fontSize: 48,
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
+	chatFontSize: 18,
 };
 
 let settings = $state<Settings>({ ...defaultSettings });
@@ -146,6 +148,19 @@ onMount(() => {
 				class="w-full rounded px-3 py-2 uppercase"
 				style="background-color: {theme.bg_dark}; border: 1px solid {theme.border}; color: {theme.fg};"
 				placeholder="#ffffff"
+			/>
+		</div>
+
+		<div>
+			<label class="block text-sm mb-2" style="color: {theme.grey};">Chat Font Size: {settings.chatFontSize}px</label>
+			<input
+				type="range"
+				min="14"
+				max="32"
+				bind:value={settings.chatFontSize}
+				oninput={saveSettings}
+				class="w-full h-2 rounded-lg appearance-none cursor-pointer"
+				style="background: linear-gradient(to right, {theme.blue} 0%, {theme.blue} {((settings.chatFontSize - 14) / 18) * 100}%, {theme.bg_dark} {((settings.chatFontSize - 14) / 18) * 100}%, {theme.bg_dark} 100%); --thumb-bg: {theme.bg}; --thumb-border: {theme.blue};"
 			/>
 		</div>
 
