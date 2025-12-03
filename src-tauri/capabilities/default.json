@@ -23,19 +23,15 @@
     "core:path:default",
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$HOME/.config/keyrc/**" }, { "path": "$HOME/.config/picom/**" }]
+      "allow": [{ "path": "$HOME/.config/keyrc/**" }]
     },
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "$HOME/.config/keyrc/**" }, { "path": "$HOME/.config/picom/**" }]
+      "allow": [{ "path": "$HOME/.config/keyrc/**" }]
     },
     {
       "identifier": "fs:allow-mkdir",
       "allow": [{ "path": "$HOME/.config/keyrc" }]
-    },
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [{ "name": "keyrc-blur", "cmd": "keyrc-blur", "args": true }]
     }
   ]
 }
