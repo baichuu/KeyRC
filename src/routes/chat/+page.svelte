@@ -25,7 +25,17 @@ const defaultTheme: Theme = {
 	border: "#1e2534",
 };
 
-let messages = $state<string[]>([]);
+interface Message {
+	text: string;
+	time: string;
+}
+
+let messages = $state<Message[]>([]);
+
+function getTimeString(): string {
+	const now = new Date();
+	return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 let currentText = $state("");
 let messagesContainer: HTMLDivElement;
 // Load cached theme from localStorage for instant display
@@ -39,6 +49,7 @@ function getCachedTheme(): Theme {
 
 let theme = $state<Theme>(getCachedTheme());
 let chatFontSize = $state(18);
+let showTimestamp = $state(true);
 
 const shiftedKeys: Record<string, string> = {
 	"1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
@@ -83,6 +94,7 @@ function loadSettings() {
 	if (saved) {
 		const settings = JSON.parse(saved);
 		chatFontSize = settings.chatFontSize ?? 18;
+		showTimestamp = settings.showTimestamp ?? true;
 	}
 }
 
@@ -108,8 +120,10 @@ onMount(() => {
 		}
 
 		if (key === "Enter") {
-			if (currentText.trim()) {
-				messages = [...messages, currentText.trim()];
+			if (shift) {
+				currentText += "\n";
+			} else if (currentText.trim()) {
+				messages = [...messages, { text: currentText.trim(), time: getTimeString() }];
 				currentText = "";
 				setTimeout(scrollToBottom, 10);
 			}
@@ -157,24 +171,27 @@ onMount(() => {
 	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto flex flex-col justify-end gap-3 mb-4 px-4">
 		{#each messages as message}
 			<div 
-				class="inline-block w-fit max-w-[85%] px-10 py-3 rounded-full font-medium"
+				class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium whitespace-pre-wrap"
 				style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
 			>
-				{message}
+				{message.text}
+				{#if showTimestamp}
+					<div class="text-xs opacity-40 mt-1" style="font-size: {Math.max(chatFontSize - 6, 10)}px;">{message.time}</div>
+				{/if}
 			</div>
 		{/each}
 	</div>
 
 	{#if currentText}
 		<div 
-			class="inline-block w-fit max-w-[85%] px-10 py-3 rounded-full font-medium mx-4"
+			class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium mx-4 whitespace-pre-wrap"
 			style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
 		>
 			{currentText}<span class="animate-pulse opacity-50">|</span>
 		</div>
 	{:else}
 		<div class="px-4" style="color: {theme.fg}; opacity: 0.5; font-size: {chatFontSize}px;">
-			Type something... (Enter to send, ESC to close)
+			Type something... (Enter to send, Shift+Enter for new line, ESC to close)
 		</div>
 	{/if}
 </div>
