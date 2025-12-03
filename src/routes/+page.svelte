@@ -1,6 +1,6 @@
 <script lang="ts">
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { onMount } from "svelte";
 import { readTextFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs";
 import { homeDir } from "@tauri-apps/api/path";
@@ -121,7 +121,7 @@ async function loadPosition() {
 		const content = await readTextFile(path);
 		const [x, y] = content.trim().split("\n").map(Number);
 		if (!isNaN(x) && !isNaN(y)) {
-			await getCurrentWindow().setPosition({ type: "Physical", x, y });
+			await getCurrentWindow().setPosition(new PhysicalPosition(x, y));
 		}
 	} catch {
 		// No saved position
@@ -141,9 +141,9 @@ async function savePosition() {
 	}
 }
 
-onMount(async () => {
+onMount(() => {
 	loadSettings();
-	await loadPosition();
+	loadPosition();
 
 	const handleSettingsChange = () => loadSettings();
 	window.addEventListener("storage", handleSettingsChange);
