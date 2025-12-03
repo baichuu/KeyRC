@@ -67,6 +67,7 @@ let keyHistory = $state<StoredKey[]>([]);
 let activeModifiers = $state<string[]>([]);
 let keyTimestamps = $state<number[]>([]);
 let wpm = $state(0);
+let capsLockOn = $state(false);
 
 function startDrag() {
 	getCurrentWindow().startDragging();
@@ -81,10 +82,11 @@ function isTextAliasKey(key: string): boolean {
 }
 
 function displayKey(stored: StoredKey): string {
-	const { key } = stored;
+	const { key, shift } = stored;
 	if (textAliases[key]) return textAliases[key];
 	if (key.length === 1) {
-		return key.toLowerCase();
+		const isUpper = capsLockOn && !shift;
+		return isUpper ? key.toUpperCase() : key.toLowerCase();
 	}
 	return key;
 }
@@ -169,6 +171,10 @@ onMount(() => {
 	const unlistenPromise = listen<KeyEvent>("key-event", (event) => {
 		const { key, modifiers } = event.payload;
 
+		if (key === "CapsLock") {
+			capsLockOn = !capsLockOn;
+		}
+
 		activeModifiers = modifiers;
 		const shift = modifiers.includes("Shift");
 		const ctrl = modifiers.includes("Ctrl");
@@ -229,9 +235,9 @@ onMount(() => {
 <svg xmlns="http://www.w3.org/2000/svg" style="font-size: {settings.fontSize}px;" width="1em" height="1em" viewBox="0 0 16 16"><path fill="currentColor" d="m10.78 8.53l-3.75 3.75a.749.749 0 1 1-1.06-1.06l2.469-2.47H1.75a.75.75 0 0 1 0-1.5h6.689L5.97 4.78a.749.749 0 1 1 1.06-1.06l3.75 3.75a.75.75 0 0 1 0 1.06M13 12.25v-8.5a.75.75 0 0 1 1.5 0v8.5a.75.75 0 0 1-1.5 0"/></svg>
 				{:else if stored.key === "Space"}
 <svg xmlns="http://www.w3.org/2000/svg" style="font-size: {settings.fontSize}px;" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 10v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+				{:else if stored.key === "CapsLock"}
+<svg xmlns="http://www.w3.org/2000/svg" style="font-size: {settings.fontSize}px;" width="1em" height="1em" viewBox="0 0 56 56"><path fill="currentColor" d="M20.781 37.621h14.461c3.281 0 5.016-1.922 5.016-5.016v-4.148h8.882c1.946 0 3.493-1.148 3.493-2.953c0-1.102-.563-1.969-1.617-2.883L30.906 4.88c-.96-.844-1.851-1.406-2.906-1.406c-1.031 0-1.922.562-2.883 1.406L4.984 22.645c-1.101.96-1.617 1.757-1.617 2.859c0 1.805 1.547 2.953 3.516 2.953h8.86v4.148c0 3.094 1.757 5.016 5.038 5.016m.375-3.539c-.89 0-1.5-.586-1.5-1.477v-6.89c0-.563-.21-.797-.773-.797H8.664c-.164 0-.234-.07-.234-.187a.33.33 0 0 1 .14-.282L27.508 7.996c.21-.187.328-.258.492-.258s.305.07.492.258L47.453 24.45a.33.33 0 0 1 .14.281c0 .118-.093.188-.257.188H37.14c-.563 0-.774.234-.774.797v6.89c0 .868-.656 1.477-1.5 1.477Zm-1.383 18.445h16.29c2.695 0 4.242-1.5 4.242-4.218v-3.375c0-2.72-1.547-4.266-4.243-4.266H19.773c-2.718 0-4.265 1.57-4.265 4.266v3.375c0 2.695 1.547 4.218 4.265 4.218m.54-3.304c-.82 0-1.266-.422-1.266-1.242v-2.72c0-.82.445-1.288 1.265-1.288h15.211c.797 0 1.242.468 1.242 1.289v2.718c0 .82-.445 1.243-1.242 1.243Z"/></svg>
 				{/if}
-        {:else if stored.key === "CapsLock"}
-        <svg xmlns="http://www.w3.org/2000/svg" style="font-size: {settings.fontSize}px;" width="1em" height="1em" viewBox="0 0 56 56"><path fill="currentColor" d="M20.781 37.621h14.461c3.281 0 5.016-1.922 5.016-5.016v-4.148h8.882c1.946 0 3.493-1.148 3.493-2.953c0-1.102-.563-1.969-1.617-2.883L30.906 4.88c-.96-.844-1.851-1.406-2.906-1.406c-1.031 0-1.922.562-2.883 1.406L4.984 22.645c-1.101.96-1.617 1.757-1.617 2.859c0 1.805 1.547 2.953 3.516 2.953h8.86v4.148c0 3.094 1.757 5.016 5.038 5.016m.375-3.539c-.89 0-1.5-.586-1.5-1.477v-6.89c0-.563-.21-.797-.773-.797H8.664c-.164 0-.234-.07-.234-.187a.33.33 0 0 1 .14-.282L27.508 7.996c.21-.187.328-.258.492-.258s.305.07.492.258L47.453 24.45a.33.33 0 0 1 .14.281c0 .118-.093.188-.257.188H37.14c-.563 0-.774.234-.774.797v6.89c0 .868-.656 1.477-1.5 1.477Zm-1.383 18.445h16.29c2.695 0 4.242-1.5 4.242-4.218v-3.375c0-2.72-1.547-4.266-4.243-4.266H19.773c-2.718 0-4.265 1.57-4.265 4.266v3.375c0 2.695 1.547 4.218 4.265 4.218m.54-3.304c-.82 0-1.266-.422-1.266-1.242v-2.72c0-.82.445-1.288 1.265-1.288h15.211c.797 0 1.242.468 1.242 1.289v2.718c0 .82-.445 1.243-1.242 1.243Z"/></svg>
 			{:else}
 				{#if stored.super}
 					<svg xmlns="http://www.w3.org/2000/svg" style="font-size: {settings.fontSize}px;" width="1em" height="1em" viewBox="0 0 24 24">
