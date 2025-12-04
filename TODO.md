@@ -2,7 +2,7 @@
 
 ## Functionality
 
-- [ ] Hotkey to toggle visibility - e.g., `Super+K` to show/hide overlay
+- [x] Hotkey to toggle visibility - e.g., `Super+K` to show/hide keyrc
 - [ ] Pause/Resume recording - Temporarily stop showing keystrokes
 - [ ] Filter modes - Show only modifiers, only letters, exclude passwords
 
@@ -30,4 +30,4 @@
 
 # Improvements
 
-- [ ] limit message in show in chat 
+- [x] Limit message in show in chat to ensure it no scroll

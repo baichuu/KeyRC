@@ -10,6 +10,7 @@ interface Settings {
 	chatFontSize: number;
 	showTimestamp: boolean;
 	chatBgOpacity: number;
+	showKeys: boolean;
 }
 
 interface Theme {
@@ -50,6 +51,7 @@ const defaultSettings: Settings = {
 	chatFontSize: 18,
 	showTimestamp: true,
 	chatBgOpacity: 100,
+	showKeys: true,
 };
 
 let settings = $state<Settings>({ ...defaultSettings });

@@ -23,12 +23,14 @@ interface Settings {
 	fontSize: number;
 	fontFamily: string;
 	textColor: string;
+	showKeys: boolean;
 }
 
 const defaultSettings: Settings = {
 	fontSize: 48,
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
+	showKeys: true,
 };
 
 const svgKeys = ["Backspace", "Enter", "Tab", "Space", "CapsLock"];
@@ -41,6 +43,10 @@ function loadSettings() {
 	if (saved) {
 		settings = { ...defaultSettings, ...JSON.parse(saved) };
 	}
+}
+
+function saveSettings() {
+	localStorage.setItem("keyrc-settings", JSON.stringify(settings));
 }
 
 const textAliases: Record<string, string> = {
@@ -161,12 +167,27 @@ async function savePosition() {
 	}
 }
 
+async function restoreVisibility() {
+	if (!settings.showKeys) {
+		await getCurrentWindow().hide();
+	}
+}
+
 onMount(() => {
 	loadSettings();
 	loadPosition();
+	restoreVisibility();
 
 	const handleSettingsChange = () => loadSettings();
 	window.addEventListener("storage", handleSettingsChange);
+
+	const unlistenVisibilityPromise = listen<boolean>("visibility-changed", async (event) => {
+		settings.showKeys = event.payload;
+		saveSettings();
+		if (event.payload) {
+			await loadPosition();
+		}
+	});
 
 	const unlistenPromise = listen<KeyEvent>("key-event", (event) => {
 		const { key, modifiers } = event.payload;
@@ -208,6 +229,7 @@ onMount(() => {
 	return () => {
 		unlistenPromise.then((unlisten) => unlisten());
 		unlistenMovePromise.then((unlisten) => unlisten());
+		unlistenVisibilityPromise.then((unlisten) => unlisten());
 		clearInterval(wpmInterval);
 		clearInterval(settingsInterval);
 		window.removeEventListener("storage", handleSettingsChange);

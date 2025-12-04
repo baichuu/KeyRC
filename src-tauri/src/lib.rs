@@ -181,6 +181,20 @@ fn start_keyboard_listener(app_handle: AppHandle) {
                     } else {
                         let key_str = key_to_string(key);
                         
+                        // F10 to toggle showkey (main window)
+                        if key_str == "F10" {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let visible = window.is_visible().unwrap_or(false);
+                                if visible {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                }
+                                let _ = app_handle.emit("visibility-changed", !visible);
+                            }
+                            continue;
+                        }
+                        
                         // F9 to open chat
                         if key_str == "F9" {
                             if let Some(window) = app_handle.get_webview_window("chat") {

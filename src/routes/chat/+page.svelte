@@ -31,13 +31,32 @@ interface Message {
 }
 
 let messages = $state<Message[]>([]);
+let maxMessages = $state(8);
+
+function calculateMaxMessages() {
+	const screenHeight = window.screen.height;
+	// padding: p-8 = 32px * 2 = 64px
+	// input area + hint text: ~70px
+	// mb-4 = 16px
+	const padding = 64 + 70 + 16;
+	// gap-3 = 12px
+	const gap = 12;
+	// message: py-3 (24px) + text line (~fontSize * 1.4) + timestamp if shown + border
+	const timestampHeight = showTimestamp ? (Math.max(chatFontSize - 6, 10) * 1.4 + 4) : 0;
+	const messageHeight = 24 + (chatFontSize * 1.4) + timestampHeight + 2 + gap;
+	const availableHeight = screenHeight - padding;
+	maxMessages = Math.max(1, Math.floor(availableHeight / messageHeight));
+	// Trim existing messages if they exceed the new limit
+	if (messages.length > maxMessages) {
+		messages = messages.slice(-maxMessages);
+	}
+}
 
 function getTimeString(): string {
 	const now = new Date();
 	return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 let currentText = $state("");
-let messagesContainer: HTMLDivElement;
 // Load cached theme from localStorage for instant display
 function getCachedTheme(): Theme {
 	try {
@@ -59,12 +78,6 @@ const shiftedKeys: Record<string, string> = {
 	";": ":", "'": "\"", ",": "<", ".": ">", "/": "?",
 	"`": "~",
 };
-
-function scrollToBottom() {
-	if (messagesContainer) {
-		messagesContainer.scrollTop = messagesContainer.scrollHeight;
-	}
-}
 
 async function loadTheme() {
 	try {
@@ -98,6 +111,7 @@ function loadSettings() {
 		showTimestamp = settings.showTimestamp ?? true;
 		chatBgOpacity = settings.chatBgOpacity ?? 100;
 	}
+	calculateMaxMessages();
 }
 
 onMount(() => {
@@ -125,9 +139,8 @@ onMount(() => {
 			if (shift) {
 				currentText += "\n";
 			} else if (currentText.trim()) {
-				messages = [...messages, { text: currentText.trim(), time: getTimeString() }];
+				messages = [...messages, { text: currentText.trim(), time: getTimeString() }].slice(-maxMessages);
 				currentText = "";
-				setTimeout(scrollToBottom, 10);
 			}
 			return;
 		}
@@ -170,7 +183,7 @@ onMount(() => {
 	class="fixed inset-0 flex flex-col justify-end p-8"
 	style="background-color: {theme.bg}{Math.round(chatBgOpacity * 2.55).toString(16).padStart(2, '0')};"
 >
-	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto flex flex-col justify-end gap-3 mb-4 px-4">
+	<div class="flex flex-col gap-3 mb-4 px-4">
 		{#each messages as message}
 			<div 
 				class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium whitespace-pre-wrap"
