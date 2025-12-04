@@ -27,3 +27,7 @@
 - [ ] Message edit - Arrow up to edit last message
 - [ ] Message delete - Delete individual messages
 - [ ] Export chat - Save as `.txt` or `.md` file
+
+# Improvements
+
+- [ ] limit message in show in chat 
