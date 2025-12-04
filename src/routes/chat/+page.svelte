@@ -32,6 +32,11 @@ interface Message {
 
 let messages = $state<Message[]>([]);
 let maxMessages = $state(8);
+let isBold = $state(false);
+let isItalic = $state(false);
+let isUnderline = $state(false);
+let isStrike = $state(false);
+let isHighlight = $state(false);
 
 function calculateMaxMessages() {
 	const screenHeight = window.screen.height;
@@ -80,6 +85,97 @@ const shiftedKeys: Record<string, string> = {
 	";": ":", "'": "\"", ",": "<", ".": ">", "/": "?",
 	"`": "~",
 };
+
+const colorRegex = /(#[0-9A-Fa-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|hsl\(\s*\d+\s*,\s*\d+%?\s*,\s*\d+%?\s*\)|hsla\(\s*\d+\s*,\s*\d+%?\s*,\s*\d+%?\s*,\s*[\d.]+\s*\))/gi;
+
+function formatText(text: string): string {
+	// First, detect colors, mentions, hashtags BEFORE escaping
+	// Use placeholders to protect them
+	const colorPlaceholders: string[] = [];
+	const mentionPlaceholders: string[] = [];
+	const hashtagPlaceholders: string[] = [];
+	
+	// Protect colors
+	let processed = text.replace(colorRegex, (match) => {
+		colorPlaceholders.push(match);
+		return `__COLOR_${colorPlaceholders.length - 1}__`;
+	});
+	
+	// Protect mentions
+	processed = processed.replace(/@(\w+)/g, (match, name) => {
+		mentionPlaceholders.push(name);
+		return `__MENTION_${mentionPlaceholders.length - 1}__`;
+	});
+	
+	// Protect hashtags (but not HTML color codes)
+	processed = processed.replace(/#(\w+)/g, (match, tag) => {
+		// Skip if it looks like a hex color
+		if (/^[0-9A-Fa-f]{3,8}$/.test(tag)) return match;
+		hashtagPlaceholders.push(tag);
+		return `__HASHTAG_${hashtagPlaceholders.length - 1}__`;
+	});
+	
+	// Now escape HTML
+	let formatted = processed
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+	
+	// Bold: <b>text</b>
+	formatted = formatted.replace(/&lt;b&gt;(.+?)&lt;\/b&gt;/g, '<strong>$1</strong>');
+	
+	// Italic: <i>text</i>
+	formatted = formatted.replace(/&lt;i&gt;(.+?)&lt;\/i&gt;/g, '<em>$1</em>');
+	
+	// Underline: <u>text</u>
+	formatted = formatted.replace(/&lt;u&gt;(.+?)&lt;\/u&gt;/g, '<u>$1</u>');
+	
+	// Strikethrough: <s>text</s>
+	formatted = formatted.replace(/&lt;s&gt;(.+?)&lt;\/s&gt;/g, '<s>$1</s>');
+	
+	// Highlight: <h>text</h>
+	formatted = formatted.replace(/&lt;h&gt;(.+?)&lt;\/h&gt;/g, '<mark style="background:#fde047;color:#000;padding:1px 4px;border-radius:2px;">$1</mark>');
+	
+	// Restore colors with formatting
+	colorPlaceholders.forEach((color, i) => {
+		formatted = formatted.replace(`__COLOR_${i}__`, `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:${color};border:1px solid rgba(255,255,255,0.3);vertical-align:middle;"></span>${color}</span>`);
+	});
+	
+	// Restore mentions with formatting
+	mentionPlaceholders.forEach((name, i) => {
+		formatted = formatted.replace(`__MENTION_${i}__`, `<span style="color:#60a5fa;">@${name}</span>`);
+	});
+	
+	// Restore hashtags with formatting
+	hashtagPlaceholders.forEach((tag, i) => {
+		formatted = formatted.replace(`__HASHTAG_${i}__`, `<span style="color:#a78bfa;">#${tag}</span>`);
+	});
+	
+	// Preserve newlines
+	formatted = formatted.replace(/\n/g, '<br>');
+	
+	return formatted;
+}
+
+function wrapWithFormat(char: string): string {
+	let result = char;
+	if (isBold) result = `<b>${result}</b>`;
+	if (isItalic) result = `<i>${result}</i>`;
+	if (isUnderline) result = `<u>${result}</u>`;
+	if (isStrike) result = `<s>${result}</s>`;
+	if (isHighlight) result = `<h>${result}</h>`;
+	return result;
+}
+
+function mergeFormatting(text: string): string {
+	// Merge adjacent same tags
+	return text
+		.replace(/<\/b><b>/g, '')
+		.replace(/<\/i><i>/g, '')
+		.replace(/<\/u><u>/g, '')
+		.replace(/<\/s><s>/g, '')
+		.replace(/<\/h><h>/g, '');
+}
 
 async function loadTheme() {
 	try {
@@ -132,34 +228,88 @@ onMount(() => {
 	const unlistenPromise = listen<KeyEvent>("key-event", (event) => {
 		const { key, modifiers } = event.payload;
 		const shift = modifiers.includes("Shift");
+		const ctrl = modifiers.includes("Ctrl");
 
 		if (key === "Escape") {
 			getCurrentWindow().close();
 			return;
 		}
 
+		// Ctrl+B to toggle bold
+		if (ctrl && key === "B") {
+			isBold = !isBold;
+			return;
+		}
+
+		// Ctrl+I to toggle italic
+		if (ctrl && key === "I") {
+			isItalic = !isItalic;
+			return;
+		}
+
+		// Ctrl+U to toggle underline
+		if (ctrl && key === "U") {
+			isUnderline = !isUnderline;
+			return;
+		}
+
+		// Ctrl+S to toggle strikethrough
+		if (ctrl && key === "S") {
+			isStrike = !isStrike;
+			return;
+		}
+
+		// Ctrl+L to toggle highlight
+		if (ctrl && key === "L") {
+			isHighlight = !isHighlight;
+			return;
+		}
+
 		if (key === "Enter") {
 			if (shift) {
-				currentText += "\n";
+				currentText += wrapWithFormat("\n");
+				currentText = mergeFormatting(currentText);
 			} else if (currentText.trim()) {
 				messages = [...messages, { text: currentText.trim(), time: getTimeString() }].slice(-maxMessages);
 				currentText = "";
+				isBold = false;
+				isItalic = false;
+				isUnderline = false;
+				isStrike = false;
+				isHighlight = false;
 			}
 			return;
 		}
 
 		if (key === "Backspace") {
+			if (!currentText) return;
+			
+			// Handle single tags: <b>, <i>, <u>, <s>, <h>
+			const tagPatterns = ['b', 'i', 'u', 's', 'h'];
+			for (const tag of tagPatterns) {
+				const regex = new RegExp(`<${tag}>(.+)</${tag}>$`);
+				const match = currentText.match(regex);
+				if (match) {
+					const content = match[1].slice(0, -1);
+					currentText = currentText.replace(regex, content ? `<${tag}>${content}</${tag}>` : '');
+					return;
+				}
+			}
+			
+			// Remove last plain character
 			currentText = currentText.slice(0, -1);
 			return;
 		}
 
 		if (key === "Space") {
-			currentText += " ";
+			currentText += wrapWithFormat(" ");
+			currentText = mergeFormatting(currentText);
 			return;
 		}
 
 		if (key === "Tab") {
-			currentText += "    ";
+			currentText += wrapWithFormat("    ");
+			currentText = mergeFormatting(currentText);
 			return;
 		}
 
@@ -167,13 +317,16 @@ onMount(() => {
 		if (key.length > 1) return;
 
 		// Handle shifted keys
+		let char: string;
 		if (shift && shiftedKeys[key]) {
-			currentText += shiftedKeys[key];
+			char = shiftedKeys[key];
 		} else if (shift) {
-			currentText += key.toUpperCase();
+			char = key.toUpperCase();
 		} else {
-			currentText += key.toLowerCase();
+			char = key.toLowerCase();
 		}
+		currentText += wrapWithFormat(char);
+		currentText = mergeFormatting(currentText);
 	});
 
 	return () => {
@@ -189,10 +342,10 @@ onMount(() => {
 	<div class="flex flex-col gap-3 mb-4 px-4">
 		{#each messages as message}
 			<div 
-				class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium whitespace-pre-wrap"
+				class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium"
 				style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
 			>
-				{message.text}
+				{@html formatText(message.text)}
 				{#if showTimestamp}
 					<div class="text-xs opacity-40 mt-1" style="font-size: {Math.max(chatFontSize - 6, 10)}px;">{message.time}</div>
 				{/if}
@@ -202,14 +355,24 @@ onMount(() => {
 
 	{#if currentText}
 		<div 
-			class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium mx-4 whitespace-pre-wrap"
+			class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium mx-4"
 			style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
 		>
-			{currentText}<span class="animate-pulse opacity-50">|</span>
+			{@html formatText(currentText)}<span class="animate-pulse opacity-50">|</span>
 		</div>
 	{:else}
 		<div class="px-4" style="color: {theme.fg}; opacity: 0.5; font-size: {chatFontSize}px;">
 			Type something... (Enter to send, Shift+Enter for new line, ESC to close)
+		</div>
+	{/if}
+	
+	{#if isBold || isItalic || isUnderline || isStrike || isHighlight}
+		<div class="flex gap-2 px-4 mt-2" style="color: {theme.fg}; opacity: 0.7; font-size: 12px;">
+			{#if isBold}<span class="px-2 py-0.5 rounded" style="background: {theme.bg_dark}; border: 1px solid {theme.border};"><strong>B</strong></span>{/if}
+			{#if isItalic}<span class="px-2 py-0.5 rounded" style="background: {theme.bg_dark}; border: 1px solid {theme.border};"><em>I</em></span>{/if}
+			{#if isUnderline}<span class="px-2 py-0.5 rounded" style="background: {theme.bg_dark}; border: 1px solid {theme.border};"><u>U</u></span>{/if}
+			{#if isStrike}<span class="px-2 py-0.5 rounded" style="background: {theme.bg_dark}; border: 1px solid {theme.border};"><s>S</s></span>{/if}
+			{#if isHighlight}<span class="px-2 py-0.5 rounded" style="background: #fde047; color: #000;">H</span>{/if}
 		</div>
 	{/if}
 </div>

@@ -27,3 +27,10 @@
 # Improvements
 
 - [x] Limit message in show in chat to ensure it no scroll
+
+   Ctrl+U - Underline
+   Ctrl+S - Strikethrough
+   Ctrl+` - Inline code (monospace with background)
+   Ctrl+L - Highlight/Mark (yellow background)
+   Mentions - @username style
+   Hashtags - #tag style
