@@ -38,12 +38,13 @@ function calculateMaxMessages() {
 	// padding: p-8 = 32px * 2 = 64px
 	// input area + hint text: ~70px
 	// mb-4 = 16px
-	const padding = 64 + 70 + 16;
+	// extra buffer for multi-line messages: 150px
+	const padding = 64 + 70 + 16 + 150;
 	// gap-3 = 12px
 	const gap = 12;
-	// message: py-3 (24px) + text line (~fontSize * 1.4) + timestamp if shown + border
+	// message: py-3 (24px) + text lines (~fontSize * 1.4 * 2 for avg multi-line) + timestamp if shown + border
 	const timestampHeight = showTimestamp ? (Math.max(chatFontSize - 6, 10) * 1.4 + 4) : 0;
-	const messageHeight = 24 + (chatFontSize * 1.4) + timestampHeight + 2 + gap;
+	const messageHeight = 24 + (chatFontSize * 1.4 * 2) + timestampHeight + 2 + gap;
 	const availableHeight = screenHeight - padding;
 	maxMessages = Math.max(1, Math.floor(availableHeight / messageHeight));
 	// Trim existing messages if they exceed the new limit
@@ -70,6 +71,7 @@ let theme = $state<Theme>(getCachedTheme());
 let chatFontSize = $state(18);
 let showTimestamp = $state(true);
 let chatBgOpacity = $state(100);
+let chatBgImage = $state("");
 
 const shiftedKeys: Record<string, string> = {
 	"1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
@@ -110,6 +112,7 @@ function loadSettings() {
 		chatFontSize = settings.chatFontSize ?? 18;
 		showTimestamp = settings.showTimestamp ?? true;
 		chatBgOpacity = settings.chatBgOpacity ?? 100;
+		chatBgImage = settings.chatBgImage ?? "";
 	}
 	calculateMaxMessages();
 }
@@ -181,7 +184,7 @@ onMount(() => {
 
 <div
 	class="fixed inset-0 flex flex-col justify-end p-8"
-	style="background-color: {theme.bg}{Math.round(chatBgOpacity * 2.55).toString(16).padStart(2, '0')};"
+	style="background-color: {theme.bg}{Math.round(chatBgOpacity * 2.55).toString(16).padStart(2, '0')}; {chatBgImage ? `background-image: url('${chatBgImage}'); background-size: cover; background-position: center;` : ''}"
 >
 	<div class="flex flex-col gap-3 mb-4 px-4">
 		{#each messages as message}

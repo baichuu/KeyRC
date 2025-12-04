@@ -11,6 +11,8 @@ interface Settings {
 	showTimestamp: boolean;
 	chatBgOpacity: number;
 	showKeys: boolean;
+	chatBgImage: string;
+	chatBgImageTab: "url" | "upload";
 }
 
 interface Theme {
@@ -52,6 +54,8 @@ const defaultSettings: Settings = {
 	showTimestamp: true,
 	chatBgOpacity: 100,
 	showKeys: true,
+	chatBgImage: "",
+	chatBgImageTab: "url",
 };
 
 let settings = $state<Settings>({ ...defaultSettings });
@@ -66,6 +70,19 @@ function loadSettings() {
 
 function saveSettings() {
 	localStorage.setItem("keyrc-settings", JSON.stringify(settings));
+}
+
+function handleImageUpload(event: Event) {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	if (file) {
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			settings.chatBgImage = e.target?.result as string;
+			saveSettings();
+		};
+		reader.readAsDataURL(file);
+	}
 }
 
 async function loadTheme() {
@@ -198,6 +215,53 @@ onMount(() => {
 				class="w-full h-2 rounded-lg appearance-none cursor-pointer"
 				style="background: linear-gradient(to right, {theme.blue} 0%, {theme.blue} {settings.chatBgOpacity}%, {theme.bg_dark} {settings.chatBgOpacity}%, {theme.bg_dark} 100%); --thumb-bg: {theme.bg}; --thumb-border: {theme.blue};"
 			/>
+		</div>
+
+		<div>
+			<label class="block text-sm mb-2" style="color: {theme.grey};">Chat Background Image</label>
+			<div class="flex mb-2 rounded overflow-hidden" style="border: 1px solid {theme.border};">
+				<button
+					onclick={() => { settings.chatBgImageTab = "url"; saveSettings(); }}
+					class="flex-1 py-2 text-sm"
+					style="background-color: {settings.chatBgImageTab === 'url' ? theme.blue : theme.bg_dark}; color: {settings.chatBgImageTab === 'url' ? theme.bg : theme.fg};"
+				>
+					URL
+				</button>
+				<button
+					onclick={() => { settings.chatBgImageTab = "upload"; saveSettings(); }}
+					class="flex-1 py-2 text-sm"
+					style="background-color: {settings.chatBgImageTab === 'upload' ? theme.blue : theme.bg_dark}; color: {settings.chatBgImageTab === 'upload' ? theme.bg : theme.fg};"
+				>
+					Upload
+				</button>
+			</div>
+			{#if settings.chatBgImageTab === "url"}
+				<input
+					type="text"
+					bind:value={settings.chatBgImage}
+					oninput={saveSettings}
+					class="w-full rounded px-3 py-2"
+					style="background-color: {theme.bg_dark}; border: 1px solid {theme.border}; color: {theme.fg};"
+					placeholder="https://example.com/image.jpg"
+				/>
+			{:else}
+				<input
+					type="file"
+					accept="image/*"
+					onchange={handleImageUpload}
+					class="w-full rounded px-3 py-2 cursor-pointer"
+					style="background-color: {theme.bg_dark}; border: 1px solid {theme.border}; color: {theme.fg};"
+				/>
+			{/if}
+			{#if settings.chatBgImage}
+				<button
+					onclick={() => { settings.chatBgImage = ""; saveSettings(); }}
+					class="mt-2 w-full py-2 rounded text-sm"
+					style="background-color: {theme.bg_dark}; border: 1px solid {theme.border}; color: {theme.fg};"
+				>
+					Clear Background
+				</button>
+			{/if}
 		</div>
 
 		<div class="pt-6" style="border-top: 1px solid {theme.border};">

@@ -23,10 +23,6 @@
 - [ ] Copy last message - `Ctrl+C` to copy to clipboard
 - [x] Message timestamps - Show time when message was sent
 - [x] Multi-line input - `Shift+Enter` for new line, `Enter` to send
-- [ ] Auto-clear on close - Option to clear or keep messages
-- [ ] Message edit - Arrow up to edit last message
-- [ ] Message delete - Delete individual messages
-- [ ] Export chat - Save as `.txt` or `.md` file
 
 # Improvements
 
