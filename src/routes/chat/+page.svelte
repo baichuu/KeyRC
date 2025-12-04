@@ -151,6 +151,30 @@ function formatText(text: string): string {
 		formatted = formatted.replace(`__HASHTAG_${i}__`, `<span style="color:#a78bfa;">#${tag}</span>`);
 	});
 	
+	// Emoji shortcuts
+	const emojiMap: Record<string, string> = {
+		':)': '😊', ':-)': '😊', ':D': '😄', ':-D': '😄', ';)': '😉', ';-)': '😉',
+		':(': '😢', ':-(': '😢', ':P': '😛', ':-P': '😛', ':p': '😛', ':-p': '😛',
+		':o': '😮', ':O': '😮', ':-o': '😮', ':-O': '😮', 'xD': '😆', 'XD': '😆',
+		'<3': '❤️', '</3': '💔', ':*': '😘', ':-*': '😘', 'B)': '😎', 'B-)': '😎',
+		':/': '😕', ':-/': '😕', ':S': '😖', ':-S': '😖', ':s': '😖', ':-s': '😖',
+		":'(": '😭', ":'-)": '😂', ':\'D': '😂', 'O:)': '😇', '0:)': '😇',
+		'>:(': '😠', '>:-(': '😠', ':@': '😡', ':|': '😐', ':-|': '😐',
+		'^_^': '😊', '-_-': '😑', 'o_o': '😳', 'O_O': '😳', '>_<': '😣',
+		':fire:': '🔥', ':heart:': '❤️', ':star:': '⭐', ':check:': '✅', ':x:': '❌',
+		':thumb:': '👍', ':thumbup:': '👍', ':thumbdown:': '👎', ':clap:': '👏',
+		':wave:': '👋', ':pray:': '🙏', ':muscle:': '💪', ':eyes:': '👀',
+		':cry:': '😢', ':laugh:': '😂', ':love:': '😍', ':angry:': '😠',
+		':cool:': '😎', ':sad:': '😢', ':happy:': '😊', ':wink:': '😉',
+		':think:': '🤔', ':shrug:': '🤷', ':facepalm:': '🤦', ':party:': '🎉',
+		':rocket:': '🚀', ':100:': '💯', ':ok:': '👌', ':peace:': '✌️',
+	};
+	
+	for (const [shortcut, emoji] of Object.entries(emojiMap)) {
+		const escaped = shortcut.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		formatted = formatted.replace(new RegExp(escaped, 'g'), emoji);
+	}
+	
 	// Preserve newlines
 	formatted = formatted.replace(/\n/g, '<br>');
 	
@@ -355,11 +379,9 @@ onMount(() => {
 
 	{#if currentText}
 		<div 
-			class="inline-block w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium mx-4"
+			class="w-fit max-w-[85%] px-6 py-3 rounded-3xl font-medium mx-4"
 			style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
-		>
-			{@html formatText(currentText)}<span class="animate-pulse opacity-50">|</span>
-		</div>
+		>{@html formatText(currentText)}<span class="animate-pulse opacity-50">|</span></div>
 	{:else}
 		<div class="px-4" style="color: {theme.fg}; opacity: 0.5; font-size: {chatFontSize}px;">
 			Type something... (Enter to send, Shift+Enter for new line, ESC to close)
