@@ -1893,6 +1893,7 @@ dependencies = [
 name = "keyrc"
 version = "0.1.0"
 dependencies = [
+ "gtk",
  "rdev",
  "serde",
  "serde_json",

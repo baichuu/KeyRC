@@ -8,6 +8,16 @@ use tauri::{
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
+#[cfg(target_os = "linux")]
+use gtk::prelude::GtkWindowExt;
+
+#[cfg(target_os = "linux")]
+fn make_window_sticky(window: &tauri::WebviewWindow) {
+    if let Ok(gtk_window) = window.gtk_window() {
+        gtk_window.stick();
+    }
+}
+
 #[derive(Clone, Serialize)]
 struct KeyEvent {
     key: String,
@@ -176,8 +186,7 @@ fn start_keyboard_listener(app_handle: AppHandle) {
                             if let Some(window) = app_handle.get_webview_window("chat") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
-                            } else {
-                                let _ = WebviewWindowBuilder::new(
+                            } else if let Ok(chat_window) = WebviewWindowBuilder::new(
                                     &app_handle,
                                     "chat",
                                     WebviewUrl::App("/chat".into()),
@@ -187,7 +196,9 @@ fn start_keyboard_listener(app_handle: AppHandle) {
                                 .always_on_top(true)
                                 .skip_taskbar(true)
                                 .transparent(true)
-                                .build();
+                                .build() {
+                                #[cfg(target_os = "linux")]
+                                make_window_sticky(&chat_window);
                             }
                             continue;
                         }
@@ -221,6 +232,18 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             start_keyboard_listener(handle);
+
+            // Make main window sticky (visible on all workspaces) on Linux
+            #[cfg(target_os = "linux")]
+            if let Some(main_window) = app.get_webview_window("main") {
+                make_window_sticky(&main_window);
+            }
+
+            // Make chat window sticky on Linux
+            #[cfg(target_os = "linux")]
+            if let Some(chat_window) = app.get_webview_window("chat") {
+                make_window_sticky(&chat_window);
+            }
 
             let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
