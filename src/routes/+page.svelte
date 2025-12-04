@@ -4,6 +4,7 @@ import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { onMount } from "svelte";
 import { readTextFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs";
 import { homeDir } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 
 interface KeyEvent {
 	key: string;
@@ -24,6 +25,7 @@ interface Settings {
 	fontFamily: string;
 	textColor: string;
 	showKeys: boolean;
+	enableSound: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -31,6 +33,7 @@ const defaultSettings: Settings = {
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
 	showKeys: true,
+	enableSound: false,
 };
 
 const svgKeys = ["Backspace", "Enter", "Tab", "Space", "CapsLock"];
@@ -74,6 +77,9 @@ let activeModifiers = $state<string[]>([]);
 let keyTimestamps = $state<number[]>([]);
 let wpm = $state(0);
 let capsLockOn = $state(false);
+function updateSoundEnabled() {
+	invoke("set_sound_enabled", { enabled: settings.enableSound });
+}
 
 function startDrag() {
 	getCurrentWindow().startDragging();
@@ -177,8 +183,12 @@ onMount(() => {
 	loadSettings();
 	loadPosition();
 	restoreVisibility();
+	updateSoundEnabled();
 
-	const handleSettingsChange = () => loadSettings();
+	const handleSettingsChange = () => {
+		loadSettings();
+		updateSoundEnabled();
+	};
 	window.addEventListener("storage", handleSettingsChange);
 
 	const unlistenVisibilityPromise = listen<boolean>("visibility-changed", async (event) => {

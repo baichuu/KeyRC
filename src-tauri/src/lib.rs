@@ -1,12 +1,32 @@
 use rdev::{listen, Event, EventType, Key};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use serde::Serialize;
+use std::io::Cursor;
 use std::sync::mpsc::sync_channel;
+use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
+use rand::Rng;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
+
+const KEYBOARD_SOUND: &[u8] = include_bytes!("../../src/assets/sounds/test2.mp3");
+const SOUND_DURATION_MS: u64 = 100; // Duration per key click
+
+struct SoundState {
+    enabled: Arc<Mutex<bool>>,
+    stream_handle: Arc<Mutex<Option<OutputStreamHandle>>>,
+}
+
+#[tauri::command]
+fn set_sound_enabled(enabled: bool, state: tauri::State<SoundState>) {
+    if let Ok(mut guard) = state.enabled.lock() {
+        *guard = enabled;
+    }
+}
 
 #[cfg(target_os = "linux")]
 use gtk::prelude::GtkWindowExt;
@@ -154,7 +174,42 @@ fn is_modifier(key: &Key) -> bool {
     )
 }
 
-fn start_keyboard_listener(app_handle: AppHandle) {
+fn play_sound(enabled: &Arc<Mutex<bool>>, stream_handle: &Arc<Mutex<Option<OutputStreamHandle>>>) {
+    let is_enabled = enabled.lock().map(|g| *g).unwrap_or(false);
+    if !is_enabled {
+        return;
+    }
+    let handle_clone = {
+        if let Ok(guard) = stream_handle.lock() {
+            guard.clone()
+        } else {
+            None
+        }
+    };
+    if let Some(handle) = handle_clone {
+        thread::spawn(move || {
+            let mut rng = rand::rng();
+            
+            // Random volume between 0.7 and 1.0 for ASMR variation
+            let volume: f32 = rng.random_range(0.7..1.0);
+            
+            // Random speed/pitch between 0.9 and 1.1 for natural variation
+            let speed: f32 = rng.random_range(0.9..1.1);
+            
+            if let Ok(sink) = Sink::try_new(&handle) {
+                if let Ok(source) = Decoder::new(Cursor::new(KEYBOARD_SOUND)) {
+                    let source = source.speed(speed);
+                    sink.set_volume(volume);
+                    sink.append(source);
+                    thread::sleep(Duration::from_millis(SOUND_DURATION_MS));
+                    sink.stop();
+                }
+            }
+        });
+    }
+}
+
+fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>>, stream_handle: Arc<Mutex<Option<OutputStreamHandle>>>) {
     thread::spawn(move || {
         let (tx, rx) = sync_channel::<Event>(32);
 
@@ -173,6 +228,10 @@ fn start_keyboard_listener(app_handle: AppHandle) {
                     if should_skip_key(&key) {
                         continue;
                     }
+                    
+                    // Play sound on key press
+                    play_sound(&sound_enabled, &stream_handle);
+                    
                     if is_modifier(&key) {
                         let key_str = key_to_string(key);
                         if !modifiers.contains(&key_str) {
@@ -243,9 +302,37 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![set_sound_enabled])
         .setup(|app| {
             let handle = app.handle().clone();
-            start_keyboard_listener(handle);
+            
+            // Setup audio output
+            let sound_enabled: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+            let stream_handle: Arc<Mutex<Option<OutputStreamHandle>>> = Arc::new(Mutex::new(None));
+            let stream_handle_clone = stream_handle.clone();
+            
+            // Store state for the command
+            app.manage(SoundState {
+                enabled: sound_enabled.clone(),
+                stream_handle: stream_handle.clone(),
+            });
+            
+            thread::spawn(move || {
+                if let Ok((_stream, handle)) = OutputStream::try_default() {
+                    if let Ok(mut guard) = stream_handle_clone.lock() {
+                        *guard = Some(handle);
+                    }
+                    // Keep the stream alive
+                    loop {
+                        thread::sleep(std::time::Duration::from_secs(3600));
+                    }
+                }
+            });
+            
+            // Give audio thread time to initialize
+            thread::sleep(std::time::Duration::from_millis(100));
+            
+            start_keyboard_listener(handle, sound_enabled, stream_handle);
 
             // Make main window sticky (visible on all workspaces) on Linux
             #[cfg(target_os = "linux")]

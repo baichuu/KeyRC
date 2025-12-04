@@ -63,6 +63,7 @@ function getTimeString(): string {
 	return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 let currentText = $state("");
+
 // Load cached theme from localStorage for instant display
 function getCachedTheme(): Theme {
 	try {
@@ -157,7 +158,6 @@ function formatText(text: string): string {
 		':(': '😢', ':-(': '😢', ':P': '😛', ':-P': '😛', ':p': '😛', ':-p': '😛',
 		':o': '😮', ':O': '😮', ':-o': '😮', ':-O': '😮', 'xD': '😆', 'XD': '😆',
 		'<3': '❤️', '</3': '💔', ':*': '😘', ':-*': '😘', 'B)': '😎', 'B-)': '😎',
-		':/': '😕', ':-/': '😕', ':S': '😖', ':-S': '😖', ':s': '😖', ':-s': '😖',
 		":'(": '😭', ":'-)": '😂', ':\'D': '😂', 'O:)': '😇', '0:)': '😇',
 		'>:(': '😠', '>:-(': '😠', ':@': '😡', ':|': '😐', ':-|': '😐',
 		'^_^': '😊', '-_-': '😑', 'o_o': '😳', 'O_O': '😳', '>_<': '😣',
@@ -289,6 +289,12 @@ onMount(() => {
 			return;
 		}
 
+		// Ctrl+Shift+C to clear chat
+		if (ctrl && shift && key === "C") {
+			messages = [];
+			return;
+		}
+
 		if (key === "Enter") {
 			if (shift) {
 				currentText += wrapWithFormat("\n");
@@ -307,20 +313,6 @@ onMount(() => {
 
 		if (key === "Backspace") {
 			if (!currentText) return;
-			
-			// Handle single tags: <b>, <i>, <u>, <s>, <h>
-			const tagPatterns = ['b', 'i', 'u', 's', 'h'];
-			for (const tag of tagPatterns) {
-				const regex = new RegExp(`<${tag}>(.+)</${tag}>$`);
-				const match = currentText.match(regex);
-				if (match) {
-					const content = match[1].slice(0, -1);
-					currentText = currentText.replace(regex, content ? `<${tag}>${content}</${tag}>` : '');
-					return;
-				}
-			}
-			
-			// Remove last plain character
 			currentText = currentText.slice(0, -1);
 			return;
 		}
@@ -383,8 +375,8 @@ onMount(() => {
 			style="background-color: {theme.bg_dark}; color: {theme.fg}; border: 1px solid {theme.border}; font-size: {chatFontSize}px;"
 		>{@html formatText(currentText)}<span class="animate-pulse opacity-50">|</span></div>
 	{:else}
-		<div class="px-4" style="color: {theme.fg}; opacity: 0.5; font-size: {chatFontSize}px;">
-			Type something... (Enter to send, Shift+Enter for new line, ESC to close)
+		<div class="mx-4" style="color: {theme.fg}; opacity: 0.5; font-size: {chatFontSize}px;">
+			Enter to send, Shift+Enter new line, ESC close, Ctrl+Shift+C clear
 		</div>
 	{/if}
 	
