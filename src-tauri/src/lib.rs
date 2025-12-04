@@ -190,18 +190,28 @@ fn play_sound(enabled: &Arc<Mutex<bool>>, stream_handle: &Arc<Mutex<Option<Outpu
         thread::spawn(move || {
             let mut rng = rand::rng();
             
-            // Random volume between 0.7 and 1.0 for ASMR variation
-            let volume: f32 = rng.random_range(0.7..1.0);
+            // ASMR-like variations for natural keyboard sound
             
-            // Random speed/pitch between 0.9 and 1.1 for natural variation
-            let speed: f32 = rng.random_range(0.9..1.1);
+            // Volume: wider range 0.6-1.0 for dynamic feel
+            let volume: f32 = rng.random_range(0.6..1.0);
+            
+            // Speed/pitch: 0.92-1.08 for more noticeable tonal variation
+            let speed: f32 = rng.random_range(0.92..1.08);
+            
+            // Random start offset within first 20ms for slight timing variation
+            let start_offset_ms: u64 = rng.random_range(0..20);
+            
+            // Slightly vary duration for more organic feel (90-120ms)
+            let duration_ms: u64 = rng.random_range(90..120);
             
             if let Ok(sink) = Sink::try_new(&handle) {
                 if let Ok(source) = Decoder::new(Cursor::new(KEYBOARD_SOUND)) {
+                    // Skip a tiny random amount at start for variation
+                    let source = source.skip_duration(Duration::from_millis(start_offset_ms));
                     let source = source.speed(speed);
                     sink.set_volume(volume);
                     sink.append(source);
-                    thread::sleep(Duration::from_millis(SOUND_DURATION_MS));
+                    thread::sleep(Duration::from_millis(duration_ms));
                     sink.stop();
                 }
             }
