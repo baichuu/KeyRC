@@ -389,4 +389,27 @@ onMount(() => {
 			{#if isHighlight}<span class="px-2 py-0.5 rounded" style="background: #fde047; color: #000;">H</span>{/if}
 		</div>
 	{/if}
+
+<pre style="
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  white-space: pre;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: {theme.fg};
+  background-color: {theme.bg_dark};
+  padding: 10px 30px 10px 20px;
+  border-left: 1px solid {theme.border};
+  border-bottom: 1px solid {theme.border};
+  border-radius: 0 0 0px 20px;
+">
+██████╗  █████╗ ██╗██╗   ██╗██╗   ██╗███████╗ ██████╗██╗  ██╗██╗   ██╗
+██╔══██╗██╔══██╗██║╚██╗ ██╔╝██║   ██║██╔════╝██╔════╝██║  ██║██║   ██║
+██████╔╝███████║██║ ╚████╔╝ ██║   ██║█████╗  ██║     ███████║██║   ██║
+██╔══██╗██╔══██║██║  ╚██╔╝  ██║   ██║██╔══╝  ██║     ██╔══██║██║   ██║
+██████╔╝██║  ██║██║   ██║   ╚██████╔╝███████╗╚██████╗██║  ██║╚██████╔╝
+╚═════╝ ╚═╝  ╚═╝╚═╝   ╚═╝    ╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ 
+</pre>
 </div>
