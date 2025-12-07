@@ -48,7 +48,7 @@ const presetColors = [
 ];
 
 const defaultSettings: Settings = {
-	fontSize: 48,
+	fontSize: 36,
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
 	chatFontSize: 18,
@@ -147,11 +147,11 @@ onMount(() => {
 			<input
 				type="range"
 				min="24"
-				max="72"
+				max="48"
 				bind:value={settings.fontSize}
 				oninput={saveSettings}
 				class="w-full h-2 rounded-lg appearance-none cursor-pointer"
-				style="background: linear-gradient(to right, {theme.blue} 0%, {theme.blue} {((settings.fontSize - 24) / 48) * 100}%, {theme.bg_dark} {((settings.fontSize - 24) / 48) * 100}%, {theme.bg_dark} 100%); --thumb-bg: {theme.bg}; --thumb-border: {theme.blue};"
+				style="background: linear-gradient(to right, {theme.blue} 0%, {theme.blue} {((settings.fontSize - 24) / 24) * 100}%, {theme.bg_dark} {((settings.fontSize - 24) / 24) * 100}%, {theme.bg_dark} 100%); --thumb-bg: {theme.bg}; --thumb-border: {theme.blue};"
 			/>
 		</div>
 

@@ -29,7 +29,7 @@ interface Settings {
 }
 
 const defaultSettings: Settings = {
-	fontSize: 48,
+	fontSize: 36,
 	fontFamily: "Roboto Mono",
 	textColor: "#ffffff",
 	showKeys: true,
@@ -254,7 +254,7 @@ onMount(() => {
 	style="font-family: {settings.fontFamily};"
 >
 	<div
-		class="bg-black/90 h-32 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1 relative"
+		class="bg-black/90 h-28 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1 relative pt-4"
 		style="color: {settings.textColor};"
 	>
 		{#each getDisplayKeys().toReversed() as stored}
@@ -299,10 +299,10 @@ onMount(() => {
     </p>
 	</div>
 	<div
-		class="h-14 shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden"
+		class="h-12 shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden"
 	>
 		<div class="flex items-center justify-center bg-black/90 {activeModifiers.includes('Shift') ? 'text-white' : 'text-white/30'}">
-			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.6em" viewBox="0 0 16 16">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 16 16">
 				<path fill="currentColor" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5L8 2.731L1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/>
 			</svg>
 		</div>
@@ -312,12 +312,12 @@ onMount(() => {
 			</svg>
 		</div>
 		<div class="flex items-center justify-center bg-black/90 {activeModifiers.includes('Alt') ? 'text-white' : 'text-white/30'}">
-			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.6em" viewBox="0 0 24 24">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 24 24">
 				<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5.25h5.625l6.75 13.5H21m-6.75-13.5H21"/>
 			</svg>
 		</div>
 		<div class="flex items-center justify-center bg-black/90 {activeModifiers.includes('Super') ? 'text-white' : 'text-white/30'}">
-			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.6em" viewBox="0 0 24 24">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 24 24">
 				<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.012 5.977v12.046c0 2.645 3.316 3.954 5.14 2.13c1.825-1.825.516-5.141-2.13-5.141H5.978c-2.645 0-3.953 3.316-2.13 5.14c1.825 1.825 5.142.516 5.142-2.13V5.978c0-2.645-3.317-3.953-5.141-2.13c-1.824 1.825-.516 5.142 2.13 5.142h12.045c2.645 0 3.954-3.317 2.13-5.141s-5.141-.516-5.141 2.13"/>
 			</svg>
 		</div>
