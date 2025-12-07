@@ -64,19 +64,12 @@ const textAliases: Record<string, string> = {
   Delete: "Del",
 };
 
-const shiftedKeys: Record<string, string> = {
-	"1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
-	"6": "^", "7": "&", "8": "*", "9": "(", "0": ")",
-	"-": "_", "=": "+", "[": "{", "]": "}", "\\": "|",
-	";": ":", "'": "\"", ",": "<", ".": ">", "/": "?",
-	"`": "~",
-};
-
 let keyHistory = $state<StoredKey[]>([]);
 let activeModifiers = $state<string[]>([]);
 let keyTimestamps = $state<number[]>([]);
 let wpm = $state(0);
 let capsLockOn = $state(false);
+
 function updateSoundEnabled() {
 	invoke("set_sound_enabled", { enabled: settings.enableSound });
 }

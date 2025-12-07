@@ -221,7 +221,7 @@ fn play_sound(enabled: &Arc<Mutex<bool>>, stream_handle: &Arc<Mutex<Option<Outpu
 
 fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>>, stream_handle: Arc<Mutex<Option<OutputStreamHandle>>>) {
     thread::spawn(move || {
-        let (tx, rx) = sync_channel::<Event>(32);
+        let (tx, rx) = sync_channel::<Event>(128);
 
         thread::spawn(move || {
             listen(move |event| {
@@ -287,7 +287,7 @@ fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>
                             }
                             continue;
                         }
-                        
+
                         let key_event = KeyEvent {
                             key: key_str,
                             modifiers: modifiers.clone(),
