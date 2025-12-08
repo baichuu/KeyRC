@@ -260,6 +260,8 @@ fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>
                                     let _ = window.show();
                                     let _ = window.set_always_on_top(true);
                                     let _ = window.set_focus();
+                                    #[cfg(target_os = "linux")]
+                                    make_window_sticky(&window);
                                 }
                                 let _ = app_handle.emit("visibility-changed", !visible);
                             }
