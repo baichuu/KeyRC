@@ -167,9 +167,8 @@ async function savePosition() {
 }
 
 async function restoreVisibility() {
-	if (!settings.showKeys) {
-		await getCurrentWindow().hide();
-	}
+	// Always ensure window is visible on startup
+	await getCurrentWindow().show();
 }
 
 onMount(() => {
