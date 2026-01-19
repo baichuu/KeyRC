@@ -9,15 +9,6 @@
 
 - [ ] Window opacity slider - Adjust transparency
 
-## Advanced
-
-- [ ] Combo detection - Show "Ctrl+C" as single combo instead of separate keys
-
-## Chat improvements:
-
-- [ ] Clear chat - Hotkey to clear all messages (Ctrl+Shift+C)
-- [ ] Sound effects - Optional typing/send sounds
-
 ## KeyRC (main key display) improvements:
 
 - [ ] Mouse button display - Show mouse clicks too

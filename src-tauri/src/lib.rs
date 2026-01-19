@@ -1,32 +1,12 @@
 use rdev::{listen, Event, EventType, Key};
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use serde::Serialize;
-use std::io::Cursor;
 use std::sync::mpsc::sync_channel;
-use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
-use rand::Rng;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
-
-const KEYBOARD_SOUND: &[u8] = include_bytes!("../../src/assets/sounds/test2.mp3");
-const SOUND_DURATION_MS: u64 = 100; // Duration per key click
-
-struct SoundState {
-    enabled: Arc<Mutex<bool>>,
-    stream_handle: Arc<Mutex<Option<OutputStreamHandle>>>,
-}
-
-#[tauri::command]
-fn set_sound_enabled(enabled: bool, state: tauri::State<SoundState>) {
-    if let Ok(mut guard) = state.enabled.lock() {
-        *guard = enabled;
-    }
-}
 
 #[cfg(target_os = "linux")]
 use gtk::prelude::GtkWindowExt;
@@ -174,52 +154,7 @@ fn is_modifier(key: &Key) -> bool {
     )
 }
 
-fn play_sound(enabled: &Arc<Mutex<bool>>, stream_handle: &Arc<Mutex<Option<OutputStreamHandle>>>) {
-    let is_enabled = enabled.lock().map(|g| *g).unwrap_or(false);
-    if !is_enabled {
-        return;
-    }
-    let handle_clone = {
-        if let Ok(guard) = stream_handle.lock() {
-            guard.clone()
-        } else {
-            None
-        }
-    };
-    if let Some(handle) = handle_clone {
-        thread::spawn(move || {
-            let mut rng = rand::rng();
-            
-            // ASMR-like variations for natural keyboard sound
-            
-            // Volume: wider range 0.6-1.0 for dynamic feel
-            let volume: f32 = rng.random_range(0.6..1.0);
-            
-            // Speed/pitch: 0.92-1.08 for more noticeable tonal variation
-            let speed: f32 = rng.random_range(0.92..1.08);
-            
-            // Random start offset within first 20ms for slight timing variation
-            let start_offset_ms: u64 = rng.random_range(0..20);
-            
-            // Slightly vary duration for more organic feel (90-120ms)
-            let duration_ms: u64 = rng.random_range(90..120);
-            
-            if let Ok(sink) = Sink::try_new(&handle) {
-                if let Ok(source) = Decoder::new(Cursor::new(KEYBOARD_SOUND)) {
-                    // Skip a tiny random amount at start for variation
-                    let source = source.skip_duration(Duration::from_millis(start_offset_ms));
-                    let source = source.speed(speed);
-                    sink.set_volume(volume);
-                    sink.append(source);
-                    thread::sleep(Duration::from_millis(duration_ms));
-                    sink.stop();
-                }
-            }
-        });
-    }
-}
-
-fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>>, stream_handle: Arc<Mutex<Option<OutputStreamHandle>>>) {
+fn start_keyboard_listener(app_handle: AppHandle) {
     thread::spawn(move || {
         let (tx, rx) = sync_channel::<Event>(128);
 
@@ -238,10 +173,7 @@ fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>
                     if should_skip_key(&key) {
                         continue;
                     }
-                    
-                    // Play sound on key press
-                    play_sound(&sound_enabled, &stream_handle);
-                    
+
                     if is_modifier(&key) {
                         let key_str = key_to_string(key);
                         if !modifiers.contains(&key_str) {
@@ -268,28 +200,6 @@ fn start_keyboard_listener(app_handle: AppHandle, sound_enabled: Arc<Mutex<bool>
                             continue;
                         }
                         
-                        // F9 to open chat
-                        if key_str == "F9" {
-                            if let Some(window) = app_handle.get_webview_window("chat") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            } else if let Ok(chat_window) = WebviewWindowBuilder::new(
-                                    &app_handle,
-                                    "chat",
-                                    WebviewUrl::App("/chat".into()),
-                                )
-                                .title("Chat")
-                                .decorations(false)
-                                .always_on_top(true)
-                                .skip_taskbar(true)
-                                .transparent(true)
-                                .build() {
-                                #[cfg(target_os = "linux")]
-                                make_window_sticky(&chat_window);
-                            }
-                            continue;
-                        }
-
                         let key_event = KeyEvent {
                             key: key_str,
                             modifiers: modifiers.clone(),
@@ -316,48 +226,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![set_sound_enabled])
         .setup(|app| {
             let handle = app.handle().clone();
-            
-            // Setup audio output
-            let sound_enabled: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-            let stream_handle: Arc<Mutex<Option<OutputStreamHandle>>> = Arc::new(Mutex::new(None));
-            let stream_handle_clone = stream_handle.clone();
-            
-            // Store state for the command
-            app.manage(SoundState {
-                enabled: sound_enabled.clone(),
-                stream_handle: stream_handle.clone(),
-            });
-            
-            thread::spawn(move || {
-                if let Ok((_stream, handle)) = OutputStream::try_default() {
-                    if let Ok(mut guard) = stream_handle_clone.lock() {
-                        *guard = Some(handle);
-                    }
-                    // Keep the stream alive
-                    loop {
-                        thread::sleep(std::time::Duration::from_secs(3600));
-                    }
-                }
-            });
-            
-            // Give audio thread time to initialize
-            thread::sleep(std::time::Duration::from_millis(100));
-            
-            start_keyboard_listener(handle, sound_enabled, stream_handle);
+
+            start_keyboard_listener(handle);
 
             // Make main window sticky (visible on all workspaces) on Linux
             #[cfg(target_os = "linux")]
             if let Some(main_window) = app.get_webview_window("main") {
                 make_window_sticky(&main_window);
-            }
-
-            // Make chat window sticky on Linux
-            #[cfg(target_os = "linux")]
-            if let Some(chat_window) = app.get_webview_window("chat") {
-                make_window_sticky(&chat_window);
             }
 
             let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;

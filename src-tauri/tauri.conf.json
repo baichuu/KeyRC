@@ -22,18 +22,6 @@
         "skipTaskbar": true,
         "resizable": false,
         "focus": false
-      },
-      {
-        "label": "chat",
-        "title": "Chat",
-        "url": "/chat",
-        "fullscreen": true,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "resizable": false,
-        "visible": false
       }
     ],
 
@@ -45,6 +33,7 @@
     "active": false,
     "targets": [],
     "icon": [
+      "icons/icon.png",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
