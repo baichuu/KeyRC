@@ -2,11 +2,7 @@ use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 use std::sync::mpsc::sync_channel;
 use std::thread;
-use tauri::{
-    menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager,
-};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(target_os = "linux")]
 use gtk::prelude::GtkWindowExt;
@@ -202,20 +198,6 @@ pub fn run() {
             if let Some(main_window) = app.get_webview_window("main") {
                 make_window_sticky(&main_window);
             }
-
-            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_item])?;
-
-            TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("KeyRC")
-                .menu(&menu)
-                .on_menu_event(|app_handle, event| {
-                    if event.id.as_ref() == "quit" {
-                        app_handle.exit(0);
-                    }
-                })
-                .build(app)?;
 
             Ok(())
         })
