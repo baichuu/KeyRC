@@ -173,7 +173,7 @@ onMount(() => {
 	style={themeVariables(theme)}
 >
 	<div
-		class="key-display h-[62px] shrink-0 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1"
+		class="key-display h-[66px] shrink-0 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1"
 	>
 		{#each getDisplayKeys() as stored (stored.id)}
 			<span class="key-token">
