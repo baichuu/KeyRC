@@ -34,10 +34,12 @@ interface Theme {
 }
 
 const FONT_SIZE = 36;
+const ARROW_FONT_SIZE = 44;
 const MAX_DISPLAY_UNITS = 6;
 const MAX_HISTORY = 6;
 
 const SVG_KEYS = new Set(["Backspace", "Enter", "Tab", "Space", "CapsLock"]);
+const ARROW_GLYPHS = new Set(["", "", "", ""]);
 
 const ALIASES: Record<string, string> = {
 	PageUp: "PgUp",
@@ -173,7 +175,7 @@ onMount(() => {
 	style={themeVariables(theme)}
 >
 	<div
-		class="key-display h-[66px] shrink-0 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1"
+		class="key-display h-[70px] shrink-0 w-full flex flex-row justify-center items-center rounded-tr-3xl rounded-tl-3xl overflow-hidden gap-1"
 	>
 		{#each getDisplayKeys() as stored (stored.id)}
 			<span class="key-token">
@@ -202,12 +204,12 @@ onMount(() => {
 				{#if stored.shift}
 <svg xmlns="http://www.w3.org/2000/svg" style="font-size:{FONT_SIZE}px" width="1em" height="1em" viewBox="0 0 16 16"><path fill="currentColor" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5L8 2.731L1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/></svg>
 				{/if}
-				<span style="font-size:{FONT_SIZE}px">{displayKey(stored)}</span>
+				<span style="font-size:{ARROW_GLYPHS.has(stored.key) ? ARROW_FONT_SIZE : FONT_SIZE}px">{displayKey(stored)}</span>
 			{/if}
 			</span>
 		{/each}
 	</div>
-	<div class="h-9 shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden">
+	<div class="h-[42px] shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden">
 		<div class="modifier modifier-shift flex items-center justify-center" class:active={activeModifiers.includes('Shift')}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 16 16"><path fill="currentColor" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5L8 2.731L1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/></svg>
 		</div>

@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "keyrc",
-        "width": 300,
-        "height": 104,
+        "width": 290,
+        "height": 114,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

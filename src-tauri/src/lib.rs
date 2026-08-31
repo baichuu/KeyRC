@@ -340,9 +340,9 @@ pub fn run() {
                 // window is being created. Wry also gives its webview a
                 // 200x200 size request, so shrink the child before the window.
                 let _ = main_window.with_webview(|webview| {
-                    webview.inner().set_size_request(300, 104);
+                    webview.inner().set_size_request(290, 114);
                 });
-                let _ = main_window.set_size(LogicalSize::new(300.0, 104.0));
+                let _ = main_window.set_size(LogicalSize::new(290.0, 114.0));
                 let _ = main_window.set_resizable(false);
                 make_window_sticky(&main_window);
             }
