@@ -20,8 +20,8 @@ use std::time::{Duration, Instant, SystemTime};
 
 const WIDTH: i32 = 290;
 const KEY_HEIGHT: i32 = 70;
-const FULL_HEIGHT: i32 = 114;
-const MODIFIER_Y: f64 = 72.0;
+const FULL_HEIGHT: i32 = 116;
+const MODIFIER_Y: f64 = 74.0;
 const MODIFIER_HEIGHT: f64 = 42.0;
 const CORNER_RADIUS: f64 = 24.0;
 const FONT: &str = "Iosevka Nerd Font Mono";
@@ -824,7 +824,16 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
             3 => 4,
             _ => 0,
         };
-        rounded_panel(context, x, MODIFIER_Y, 71.0, MODIFIER_HEIGHT, corners);
+        // Keep the one-pixel stroke fully inside the native surface. A path on
+        // the exact bottom/right edge loses half of its border to clipping.
+        rounded_panel(
+            context,
+            x + 0.5,
+            MODIFIER_Y + 0.5,
+            70.0,
+            MODIFIER_HEIGHT - 1.0,
+            corners,
+        );
         if active {
             state.theme.active_bg.set(context);
         } else {
@@ -861,7 +870,7 @@ fn draw_ui(context: &Context, icons: &Icons, state: &AppState) {
         0.5,
         0.5,
         f64::from(WIDTH) - 1.0,
-        f64::from(KEY_HEIGHT) - 0.5,
+        f64::from(KEY_HEIGHT) - 1.0,
         if state.theme.mode == DisplayMode::KeysOnly {
             15
         } else {
@@ -944,8 +953,10 @@ pub fn run() {
     #[cfg(debug_assertions)]
     let initial_theme = {
         let mut theme = initial_theme;
-        if std::env::var("KEYRC_PREVIEW_MODE").as_deref() == Ok("keys_only") {
-            theme.mode = DisplayMode::KeysOnly;
+        match std::env::var("KEYRC_PREVIEW_MODE").as_deref() {
+            Ok("keys_only") => theme.mode = DisplayMode::KeysOnly,
+            Ok("full") => theme.mode = DisplayMode::Full,
+            _ => {}
         }
         theme
     };
