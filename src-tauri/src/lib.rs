@@ -187,6 +187,10 @@ struct Icons {
     ctrl: Pixbuf,
     alt: Pixbuf,
     super_key: Pixbuf,
+    shift_large: Pixbuf,
+    ctrl_large: Pixbuf,
+    alt_large: Pixbuf,
+    super_key_large: Pixbuf,
 }
 
 impl Icons {
@@ -273,6 +277,30 @@ impl Icons {
             super_key: load_svg(
                 26,
                 22,
+                "0 0 24 24",
+                r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.012 5.977v12.046c0 2.645 3.316 3.954 5.14 2.13 1.825-1.825.516-5.141-2.13-5.141H5.978c-2.645 0-3.953 3.316-2.13 5.14 1.825 1.825 5.142.516 5.142-2.13V5.978c0-2.645-3.317-3.953-5.141-2.13-1.824 1.825-.516 5.142 2.13 5.142h12.045c2.645 0 3.954-3.317 2.13-5.141s-5.141-.516-5.141 2.13"/>"#,
+            ),
+            shift_large: load_svg(
+                36,
+                36,
+                "0 0 16 16",
+                r#"<path fill="currentColor" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5 8 2.731 1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/>"#,
+            ),
+            ctrl_large: load_svg(
+                36,
+                36,
+                "0 0 16 16",
+                r#"<path fill="currentColor" d="M11.5 7a.5.5 0 0 1-.377-.171l-3.124-3.57-3.124 3.57a.5.5 0 1 1-.753-.659l3.5-4a.502.502 0 0 1 .752 0l3.5 4a.5.5 0 0 1-.376.83z"/>"#,
+            ),
+            alt_large: load_svg(
+                36,
+                36,
+                "0 0 24 24",
+                r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5.25h5.625l6.75 13.5H21m-6.75-13.5H21"/>"#,
+            ),
+            super_key_large: load_svg(
+                36,
+                36,
                 "0 0 24 24",
                 r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.012 5.977v12.046c0 2.645 3.316 3.954 5.14 2.13 1.825-1.825.516-5.141-2.13-5.141H5.978c-2.645 0-3.953 3.316-2.13 5.14 1.825 1.825 5.142.516 5.142-2.13V5.978c0-2.645-3.317-3.953-5.141-2.13-1.824 1.825-.516 5.142 2.13 5.142h12.045c2.645 0 3.954-3.317 2.13-5.141s-5.141-.516-5.141 2.13"/>"#,
             ),
@@ -790,12 +818,24 @@ fn draw_special_key(
     );
 }
 
-fn draw_modifier(context: &Context, icons: &Icons, modifier: &str, x: f64, y: f64, color: Color) {
-    let icon = match modifier {
-        "Shift" => &icons.shift,
-        "Ctrl" => &icons.ctrl,
-        "Alt" => &icons.alt,
-        "Super" => &icons.super_key,
+fn draw_modifier(
+    context: &Context,
+    icons: &Icons,
+    modifier: &str,
+    x: f64,
+    y: f64,
+    large: bool,
+    color: Color,
+) {
+    let icon = match (modifier, large) {
+        ("Shift", false) => &icons.shift,
+        ("Ctrl", false) => &icons.ctrl,
+        ("Alt", false) => &icons.alt,
+        ("Super", false) => &icons.super_key,
+        ("Shift", true) => &icons.shift_large,
+        ("Ctrl", true) => &icons.ctrl_large,
+        ("Alt", true) => &icons.alt_large,
+        ("Super", true) => &icons.super_key_large,
         _ => return,
     };
     draw_icon(
@@ -839,6 +879,7 @@ fn draw_key_token(
                     name,
                     cursor + 18.0,
                     center_y,
+                    true,
                     state.theme.key_text.with_alpha(eased),
                 );
                 cursor += 40.0;
@@ -913,6 +954,7 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
             name,
             x + 35.5,
             MODIFIER_Y + MODIFIER_HEIGHT / 2.0,
+            false,
             color,
         );
     }
