@@ -62,9 +62,3 @@ the development URL. For a direct Cargo build, build the frontend first and use
 ### Recommended IDE setup
 
 [VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
-
-- [ ] fix func key, and some key about volume brightness
-- [ ] make settings allow more custom
-- [ ] make icon tray
-- [ ] change name color template for use easy config
-- [ ] optimize perfomance and usage of app

@@ -6,7 +6,14 @@ import { onMount } from "svelte";
 
 interface KeyEvent {
 	key: string;
-	modifiers: string[];
+	modifiers: ModifierState;
+}
+
+interface ModifierState {
+	shift: boolean;
+	ctrl: boolean;
+	alt: boolean;
+	super_key: boolean;
 }
 
 interface StoredKey {
@@ -55,7 +62,7 @@ const ALIASES: Record<string, string> = {
 };
 
 let keyHistory = $state<StoredKey[]>([]);
-let activeModifiers = $state<string[]>([]);
+let activeModifiers = $state<ModifierState>({ shift: false, ctrl: false, alt: false, super_key: false });
 let capsLockOn = $state(false);
 let nextKeyId = 0;
 let theme = $state<Theme>({
@@ -112,10 +119,10 @@ onMount(() => {
 		const entry: StoredKey = {
 			id: nextKeyId++,
 			key,
-			shift: modifiers.includes("Shift"),
-			ctrl: modifiers.includes("Ctrl"),
-			alt: modifiers.includes("Alt"),
-			super: modifiers.includes("Super"),
+			shift: modifiers.shift,
+			ctrl: modifiers.ctrl,
+			alt: modifiers.alt,
+			super: modifiers.super_key,
 		};
 
 		const isAlias = key in ALIASES;
@@ -185,16 +192,16 @@ onMount(() => {
 	</div>
 	{#if theme.mode === "full"}
 	<div class="h-[42px] shrink-0 grid grid-cols-4 gap-0.5 w-full rounded-br-3xl rounded-bl-3xl overflow-hidden">
-		<div class="modifier flex items-center justify-center" class:active={activeModifiers.includes('Shift')}>
+		<div class="modifier flex items-center justify-center" class:active={activeModifiers.shift}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 16 16"><path fill="currentColor" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5L8 2.731L1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/></svg>
 		</div>
-		<div class="modifier flex items-center justify-center" class:active={activeModifiers.includes('Ctrl')}>
+		<div class="modifier flex items-center justify-center" class:active={activeModifiers.ctrl}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 7a.5.5 0 0 1-.377-.171l-3.124-3.57l-3.124 3.57a.5.5 0 1 1-.753-.659l3.5-4a.502.502 0 0 1 .752 0l3.5 4a.5.5 0 0 1-.376.83z"/></svg>
 		</div>
-		<div class="modifier flex items-center justify-center" class:active={activeModifiers.includes('Alt')}>
+		<div class="modifier flex items-center justify-center" class:active={activeModifiers.alt}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5.25h5.625l6.75 13.5H21m-6.75-13.5H21"/></svg>
 		</div>
-		<div class="modifier flex items-center justify-center" class:active={activeModifiers.includes('Super')}>
+		<div class="modifier flex items-center justify-center" class:active={activeModifiers.super_key}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="1.6em" height="1.4em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.012 5.977v12.046c0 2.645 3.316 3.954 5.14 2.13c1.825-1.825.516-5.141-2.13-5.141H5.978c-2.645 0-3.953 3.316-2.13 5.14c1.825 1.825 5.142.516 5.142-2.13V5.978c0-2.645-3.317-3.953-5.141-2.13c-1.824 1.825-.516 5.142 2.13 5.142h12.045c2.645 0 3.954-3.317 2.13-5.141s-5.141-.516-5.141 2.13"/></svg>
 		</div>
 	</div>

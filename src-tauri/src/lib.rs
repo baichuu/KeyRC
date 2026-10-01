@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Sender};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use tauri::{
@@ -31,15 +32,23 @@ fn lock_overlay_window(window: &tauri::WebviewWindow) {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Copy, Default, Serialize)]
+struct Modifiers {
+    shift: bool,
+    ctrl: bool,
+    alt: bool,
+    super_key: bool,
+}
+
+#[derive(Clone, Copy, Serialize)]
 struct KeyEvent {
-    key: String,
-    modifiers: Vec<String>,
+    key: &'static str,
+    modifiers: Modifiers,
 }
 
 struct WindowState {
     ready: AtomicBool,
-    position_path: PathBuf,
+    position_sender: Sender<PhysicalPosition<i32>>,
 }
 
 fn parse_position(contents: &str) -> Option<PhysicalPosition<i32>> {
@@ -69,6 +78,23 @@ fn save_position(path: &Path, position: PhysicalPosition<i32>) -> std::io::Resul
         return Err(error);
     }
     Ok(())
+}
+
+fn start_position_writer(path: PathBuf) -> Sender<PhysicalPosition<i32>> {
+    let (sender, receiver) = mpsc::channel();
+    thread::spawn(move || {
+        while let Ok(mut position) = receiver.recv() {
+            // Dragging can produce hundreds of move events per second. Wait for
+            // the movement to settle and persist only the newest coordinate.
+            while let Ok(next) = receiver.recv_timeout(Duration::from_millis(150)) {
+                position = next;
+            }
+            if let Err(error) = save_position(&path, position) {
+                eprintln!("Could not save KeyRC position: {error}");
+            }
+        }
+    });
+    sender
 }
 
 #[derive(Clone, Copy, Default, PartialEq, Serialize)]
@@ -462,35 +488,33 @@ fn is_modifier(key: &Key) -> bool {
 
 fn start_keyboard_listener(app_handle: AppHandle) {
     thread::spawn(move || {
-        let mut modifiers: Vec<String> = Vec::with_capacity(4);
+        let mut modifiers = Modifiers::default();
 
         listen(move |event| match event.event_type {
             EventType::KeyPress(key) => {
                 if is_modifier(&key) {
-                    let s = key_to_string(key);
-                    if !modifiers.iter().any(|m| m == s) {
-                        modifiers.push(s.into());
+                    match key {
+                        Key::ShiftLeft | Key::ShiftRight => modifiers.shift = true,
+                        Key::ControlLeft | Key::ControlRight => modifiers.ctrl = true,
+                        Key::Alt | Key::AltGr => modifiers.alt = true,
+                        Key::MetaLeft | Key::MetaRight => modifiers.super_key = true,
+                        _ => {}
                     }
                 } else {
                     let s = key_to_string(key);
                     if s.is_empty() {
                         return;
                     }
-                    let _ = app_handle.emit(
-                        "key-event",
-                        KeyEvent {
-                            key: s.into(),
-                            modifiers: modifiers.clone(),
-                        },
-                    );
+                    let _ = app_handle.emit("key-event", KeyEvent { key: s, modifiers });
                 }
             }
-            EventType::KeyRelease(key) => {
-                if is_modifier(&key) {
-                    let s = key_to_string(key);
-                    modifiers.retain(|m| m != s);
-                }
-            }
+            EventType::KeyRelease(key) => match key {
+                Key::ShiftLeft | Key::ShiftRight => modifiers.shift = false,
+                Key::ControlLeft | Key::ControlRight => modifiers.ctrl = false,
+                Key::Alt | Key::AltGr => modifiers.alt = false,
+                Key::MetaLeft | Key::MetaRight => modifiers.super_key = false,
+                _ => {}
+            },
             _ => {}
         })
         .expect("Could not listen to events");
@@ -500,12 +524,12 @@ fn start_keyboard_listener(app_handle: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![get_theme])
         .setup(|app| {
             let handle = app.handle().clone();
             let position_path = app.path().cache_dir()?.join("keyrc/position");
             let saved_position = read_position(&position_path);
+            let position_sender = start_position_writer(position_path);
             let initial_theme = read_theme();
             let initial_height = f64::from(initial_theme.mode.height());
             let config = app
@@ -542,28 +566,17 @@ pub fn run() {
             make_window_sticky(&main_window);
             app.manage(WindowState {
                 ready: AtomicBool::new(false),
-                position_path,
+                position_sender,
             });
             let window_handle = handle.clone();
             main_window.on_window_event(move |event| {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                 }
-                if matches!(
-                    event,
-                    WindowEvent::Moved(_) | WindowEvent::CloseRequested { .. }
-                ) {
+                if let WindowEvent::Moved(position) = event {
                     let state = window_handle.state::<WindowState>();
                     if state.ready.load(Ordering::Acquire) {
-                        if let Some(window) = window_handle.get_webview_window("main") {
-                            // Read the current position so delayed startup events
-                            // cannot overwrite the cache with an old coordinate.
-                            if let Ok(position) = window.outer_position() {
-                                if let Err(error) = save_position(&state.position_path, position) {
-                                    eprintln!("Could not save KeyRC position: {error}");
-                                }
-                            }
-                        }
+                        let _ = state.position_sender.send(*position);
                     }
                 }
             });
