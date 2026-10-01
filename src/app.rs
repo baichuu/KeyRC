@@ -9,10 +9,33 @@ use gtk::glib::{self, ControlFlow};
 use gtk::prelude::*;
 use libappindicator::{AppIndicator, AppIndicatorStatus};
 use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 #[cfg(debug_assertions)]
 use std::time::Instant;
+
+fn tray_icon_directory() -> Option<PathBuf> {
+    let data_home = std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .map(|home| home.join(".local/share"))
+        });
+    let mut directories = Vec::new();
+    if let Some(data_home) = data_home {
+        directories.push(data_home.join("icons/hicolor/1024x1024/apps"));
+    }
+    directories.extend([
+        PathBuf::from("/usr/local/share/icons/hicolor/1024x1024/apps"),
+        PathBuf::from("/usr/share/icons/hicolor/1024x1024/apps"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets"),
+    ]);
+    directories
+        .into_iter()
+        .find(|directory| directory.join("keyrc.png").is_file())
+}
 
 fn setup_tray() -> AppIndicator {
     let mut menu = gtk::Menu::new();
@@ -29,7 +52,11 @@ fn setup_tray() -> AppIndicator {
     menu.append(&quit);
     menu.show_all();
 
-    let mut indicator = AppIndicator::new("keyrc", "input-keyboard");
+    let mut indicator = if let Some(directory) = tray_icon_directory() {
+        AppIndicator::with_path("keyrc", "keyrc", &directory.to_string_lossy())
+    } else {
+        AppIndicator::new("keyrc", "input-keyboard")
+    };
     indicator.set_title("KeyRC");
     indicator.set_menu(&mut menu);
     indicator.set_status(AppIndicatorStatus::Active);

@@ -61,3 +61,22 @@ cargo build --release --locked
 
 The output is `target/release/keyrc`. Runtime dependencies are GTK 3,
 AppIndicator, and X11 access for the global keyboard listener.
+
+## Install
+
+Run the user-local installer from the repository root:
+
+```sh
+./scripts/install.sh
+```
+
+It builds the release binary and installs:
+
+- `~/.local/bin/keyrc`
+- `~/.local/share/applications/keyrc.desktop`
+- `~/.local/share/icons/hicolor/1024x1024/apps/keyrc.png`
+
+The desktop launcher and tray use the original KeyRC icon from the Tauri app.
+Use `--no-build` to install an existing release binary or `--no-start` to avoid
+restarting KeyRC after installation. `XDG_DATA_HOME` and `KEYRC_BIN_DIR` are
+respected when set.
