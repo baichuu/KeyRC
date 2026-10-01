@@ -14,12 +14,17 @@ edition = "2021"
 name = "keyrc_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9.8"
 rdev = "0.5"
 tauri-plugin-fs = "2.4.4"
 

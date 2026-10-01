@@ -1632,9 +1632,11 @@ dependencies = [
  "gtk",
  "rdev",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-fs",
+ "toml 0.9.8",
 ]
 
 [[package]]

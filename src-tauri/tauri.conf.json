@@ -13,15 +13,19 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
+        "visible": false,
         "title": "keyrc",
         "width": 290,
         "height": 114,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "skipTaskbar": false,
+        "skipTaskbar": true,
         "resizable": true,
-        "focus": false
+        "focus": false,
+        "focusable": false,
+        "closable": false
       }
     ],
 
