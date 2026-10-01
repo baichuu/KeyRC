@@ -1,6 +1,7 @@
 # KeyRC
 
-A small always-on-top keystroke display built with Tauri and Svelte.
+A small always-on-top keystroke display drawn natively with GTK 3 and Cairo.
+It uses a single process and does not embed WebKit.
 
 ## Configuration
 
@@ -43,9 +44,8 @@ Position is runtime state stored in `$XDG_CACHE_HOME/keyrc/position` (normally
 are physical pixels, including negative positions on multi-monitor desktops.
 Moves and normal window closure save the position atomically.
 
-The native window is created hidden, its size and cached position are restored,
-and its initial theme is supplied to the frontend before the window is shown.
-This avoids displaying the window at the default position before moving it.
+The native window restores its size, mode, and cached position before it is
+shown. This avoids displaying it at the default position before moving it.
 The popup does not accept focus and cannot be closed through the window manager;
 dragging is its only direct interaction. Use the tray icon to toggle display
 mode or quit KeyRC. A missing or invalid cache uses the window manager's default
@@ -53,12 +53,15 @@ placement.
 
 ## Development
 
-Build the standalone release binary with `bun run tauri build --no-bundle`.
-The output is `src-tauri/target/release/keyrc`. Tauri embeds the built frontend
-using the `custom-protocol` feature; a plain `cargo build --release` still uses
-the development URL. For a direct Cargo build, build the frontend first and use
-`cargo build --manifest-path src-tauri/Cargo.toml --release --features custom-protocol`.
+Build the standalone release binary with:
+
+```sh
+cargo build --manifest-path src-tauri/Cargo.toml --release --locked
+```
+
+The output is `src-tauri/target/release/keyrc`. Runtime dependencies are GTK 3,
+AppIndicator, and X11 access for the global keyboard listener.
 
 ### Recommended IDE setup
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+[VS Code](https://code.visualstudio.com/) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
