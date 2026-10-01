@@ -2,7 +2,9 @@ use gtk::cairo::{Context, Operator};
 use gtk::gdk;
 use gtk::gdk::prelude::GdkContextExt;
 use gtk::gdk_pixbuf::{prelude::PixbufLoaderExt, Pixbuf, PixbufLoader};
+use gtk::glib::translate::{from_glib_full, ToGlibPtr};
 use gtk::glib::{self, ControlFlow};
+use gtk::pango::{FontDescription, Layout};
 use gtk::prelude::*;
 use libappindicator::{AppIndicator, AppIndicatorStatus};
 use rdev::{listen, EventType, Key};
@@ -25,6 +27,17 @@ const CORNER_RADIUS: f64 = 24.0;
 const FONT: &str = "Iosevka Nerd Font Mono";
 const MAX_HISTORY: usize = 6;
 const MAX_DISPLAY_UNITS: usize = 6;
+
+#[link(name = "pangocairo-1.0")]
+unsafe extern "C" {
+    fn pango_cairo_create_layout(
+        context: *mut gtk::cairo::ffi::cairo_t,
+    ) -> *mut gtk::pango::ffi::PangoLayout;
+    fn pango_cairo_show_layout(
+        context: *mut gtk::cairo::ffi::cairo_t,
+        layout: *mut gtk::pango::ffi::PangoLayout,
+    );
+}
 
 #[derive(Clone, Copy, Default, PartialEq)]
 enum DisplayMode {
@@ -627,30 +640,33 @@ fn fill_panel(
     let _ = context.stroke();
 }
 
-fn select_font(context: &Context, size: f64) {
-    context.select_font_face(
-        FONT,
-        gtk::cairo::FontSlant::Normal,
-        gtk::cairo::FontWeight::Normal,
-    );
-    context.set_font_size(size);
+fn text_layout(context: &Context, text: &str, size: f64) -> Layout {
+    let layout: Layout =
+        unsafe { from_glib_full(pango_cairo_create_layout(context.to_raw_none())) };
+    let mut description = FontDescription::from_string(FONT);
+    // CSS font sizes are pixels. Absolute Pango sizing preserves that mapping
+    // instead of interpreting these values as desktop-scaled points.
+    description.set_absolute_size(size * f64::from(gtk::pango::SCALE));
+    layout.set_font_description(Some(&description));
+    layout.set_text(text);
+    layout
 }
 
 fn text_width(context: &Context, text: &str, size: f64) -> f64 {
-    select_font(context, size);
-    context
-        .text_extents(text)
-        .map_or(0.0, |extents| extents.x_advance())
+    f64::from(text_layout(context, text, size).pixel_size().0)
 }
 
 fn draw_centered_text(context: &Context, text: &str, center_x: f64, center_y: f64, size: f64) {
-    select_font(context, size);
-    if let Ok(extents) = context.text_extents(text) {
-        context.move_to(
-            center_x - extents.width() / 2.0 - extents.x_bearing(),
-            center_y - extents.height() / 2.0 - extents.y_bearing(),
-        );
-        let _ = context.show_text(text);
+    let layout = text_layout(context, text, size);
+    let (width, height) = layout.pixel_size();
+    // Center the shared font line box so every key has one baseline. Centering
+    // each glyph's ink bounds makes lowercase letters visibly jump around.
+    context.move_to(
+        center_x - f64::from(width) / 2.0,
+        center_y - f64::from(height) / 2.0,
+    );
+    unsafe {
+        pango_cairo_show_layout(context.to_raw_none(), layout.to_glib_none().0);
     }
 }
 
