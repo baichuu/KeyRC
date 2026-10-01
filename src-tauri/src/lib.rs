@@ -178,6 +178,11 @@ struct Icons {
     tab: Pixbuf,
     space: Pixbuf,
     caps_lock: Pixbuf,
+    backspace_large: Pixbuf,
+    enter_large: Pixbuf,
+    tab_large: Pixbuf,
+    space_large: Pixbuf,
+    caps_lock_large: Pixbuf,
     shift: Pixbuf,
     ctrl: Pixbuf,
     alt: Pixbuf,
@@ -214,6 +219,36 @@ impl Icons {
             caps_lock: load_svg(
                 36,
                 36,
+                "0 0 56 56",
+                r#"<path fill="currentColor" d="M20.781 37.621h14.461c3.281 0 5.016-1.922 5.016-5.016v-4.148h8.882c1.946 0 3.493-1.148 3.493-2.953 0-1.102-.563-1.969-1.617-2.883L30.906 4.88c-.96-.844-1.851-1.406-2.906-1.406-1.031 0-1.922.562-2.883 1.406L4.984 22.645c-1.101.96-1.617 1.757-1.617 2.859 0 1.805 1.547 2.953 3.516 2.953h8.86v4.148c0 3.094 1.757 5.016 5.038 5.016m.375-3.539c-.89 0-1.5-.586-1.5-1.477v-6.89c0-.563-.21-.797-.773-.797H8.664c-.164 0-.234-.07-.234-.187a.33.33 0 0 1 .14-.282L27.508 7.996c.21-.187.328-.258.492-.258s.305.07.492.258L47.453 24.45a.33.33 0 0 1 .14.281c0 .118-.093.188-.257.188H37.14c-.563 0-.774.234-.774.797v6.89c0 .868-.656 1.477-1.5 1.477Zm-1.383 18.445h16.29c2.695 0 4.242-1.5 4.242-4.218v-3.375c0-2.72-1.547-4.266-4.243-4.266H19.773c-2.718 0-4.265 1.57-4.265 4.266v3.375c0 2.695 1.547 4.218 4.265 4.218m.54-3.304c-.82 0-1.266-.422-1.266-1.242v-2.72c0-.82.445-1.288 1.265-1.288h15.211c.797 0 1.242.468 1.242 1.289v2.718c0 .82-.445 1.243-1.242 1.243Z"/>"#,
+            ),
+            backspace_large: load_svg(
+                44,
+                44,
+                "0 0 24 24",
+                r#"<path fill="currentColor" d="m11.4 16 2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6L18 9.4 16.6 8 14 10.6 11.4 8 10 9.4l2.6 2.6-2.6 2.6zM9 20q-.475 0-.9-.213t-.7-.587L2 12l5.4-7.2q.275-.375.7-.587T9 4h11q.825 0 1.413.587T22 6v12q0 .825-.587 1.413T20 20zm-4.5-8L9 18h11V6H9zm10 0"/>"#,
+            ),
+            enter_large: load_svg(
+                44,
+                44,
+                "0 0 24 24",
+                r#"<path fill="none" stroke="currentColor" stroke-linecap="square" stroke-width="2" d="M5.75 16H16a3 3 0 0 0 3-3V5M8 12.5 4.5 16 8 19.5"/>"#,
+            ),
+            tab_large: load_svg(
+                44,
+                44,
+                "0 0 16 16",
+                r#"<path fill="currentColor" d="m10.78 8.53-3.75 3.75a.749.749 0 1 1-1.06-1.06l2.469-2.47H1.75a.75.75 0 0 1 0-1.5h6.689L5.97 4.78a.749.749 0 1 1 1.06-1.06l3.75 3.75a.75.75 0 0 1 0 1.06M13 12.25v-8.5a.75.75 0 0 1 1.5 0v8.5a.75.75 0 0 1-1.5 0"/>"#,
+            ),
+            space_large: load_svg(
+                44,
+                44,
+                "0 0 24 24",
+                r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 10v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>"#,
+            ),
+            caps_lock_large: load_svg(
+                44,
+                44,
                 "0 0 56 56",
                 r#"<path fill="currentColor" d="M20.781 37.621h14.461c3.281 0 5.016-1.922 5.016-5.016v-4.148h8.882c1.946 0 3.493-1.148 3.493-2.953 0-1.102-.563-1.969-1.617-2.883L30.906 4.88c-.96-.844-1.851-1.406-2.906-1.406-1.031 0-1.922.562-2.883 1.406L4.984 22.645c-1.101.96-1.617 1.757-1.617 2.859 0 1.805 1.547 2.953 3.516 2.953h8.86v4.148c0 3.094 1.757 5.016 5.038 5.016m.375-3.539c-.89 0-1.5-.586-1.5-1.477v-6.89c0-.563-.21-.797-.773-.797H8.664c-.164 0-.234-.07-.234-.187a.33.33 0 0 1 .14-.282L27.508 7.996c.21-.187.328-.258.492-.258s.305.07.492.258L47.453 24.45a.33.33 0 0 1 .14.281c0 .118-.093.188-.257.188H37.14c-.563 0-.774.234-.774.797v6.89c0 .868-.656 1.477-1.5 1.477Zm-1.383 18.445h16.29c2.695 0 4.242-1.5 4.242-4.218v-3.375c0-2.72-1.547-4.266-4.243-4.266H19.773c-2.718 0-4.265 1.57-4.265 4.266v3.375c0 2.695 1.547 4.218 4.265 4.218m.54-3.304c-.82 0-1.266-.422-1.266-1.242v-2.72c0-.82.445-1.288 1.265-1.288h15.211c.797 0 1.242.468 1.242 1.289v2.718c0 .82-.445 1.243-1.242 1.243Z"/>"#,
             ),
@@ -713,23 +748,46 @@ fn key_width(context: &Context, key: &StoredKey, mode: DisplayMode, caps_lock: b
     }
     width
         + if is_svg_key(key.key) {
-            36.0
+            if mode == DisplayMode::KeysOnly {
+                44.0
+            } else {
+                36.0
+            }
         } else {
             let size = if is_arrow(key.key) { 44.0 } else { 36.0 };
             text_width(context, &display_text(key.key, caps_lock), size)
         }
 }
 
-fn draw_special_key(context: &Context, icons: &Icons, key: &str, x: f64, y: f64, color: Color) {
-    let icon = match key {
-        "Backspace" => &icons.backspace,
-        "Enter" => &icons.enter,
-        "Tab" => &icons.tab,
-        "Space" => &icons.space,
-        "CapsLock" => &icons.caps_lock,
+fn draw_special_key(
+    context: &Context,
+    icons: &Icons,
+    key: &str,
+    x: f64,
+    center_y: f64,
+    large: bool,
+    color: Color,
+) {
+    let icon = match (key, large) {
+        ("Backspace", false) => &icons.backspace,
+        ("Enter", false) => &icons.enter,
+        ("Tab", false) => &icons.tab,
+        ("Space", false) => &icons.space,
+        ("CapsLock", false) => &icons.caps_lock,
+        ("Backspace", true) => &icons.backspace_large,
+        ("Enter", true) => &icons.enter_large,
+        ("Tab", true) => &icons.tab_large,
+        ("Space", true) => &icons.space_large,
+        ("CapsLock", true) => &icons.caps_lock_large,
         _ => return,
     };
-    draw_icon(context, icon, x, y, color);
+    draw_icon(
+        context,
+        icon,
+        x,
+        center_y - f64::from(icon.height()) / 2.0,
+        color,
+    );
 }
 
 fn draw_modifier(context: &Context, icons: &Icons, modifier: &str, x: f64, y: f64, color: Color) {
@@ -793,7 +851,8 @@ fn draw_key_token(
             icons,
             key.key,
             cursor,
-            center_y - 18.0,
+            center_y,
+            state.theme.mode == DisplayMode::KeysOnly,
             state.theme.key_text.with_alpha(eased),
         );
     } else {
