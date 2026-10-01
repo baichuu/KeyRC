@@ -101,10 +101,10 @@ fn apply_preview_keys(mut state: AppState) -> AppState {
             let mut parts = specification.split('+').collect::<Vec<_>>();
             let raw_key = parts.pop().unwrap_or_default();
             let key = match raw_key {
-                "Right" => "",
-                "Left" => "",
-                "Up" => "",
-                "Down" => "",
+                "Right" => "Right",
+                "Left" => "Left",
+                "Up" => "Up",
+                "Down" => "Down",
                 "Enter" => "Enter",
                 other => Box::leak(other.to_owned().into_boxed_str()),
             };
@@ -179,7 +179,13 @@ pub(crate) fn run() {
 
     #[allow(deprecated)]
     let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
-    input::start_listener(sender.clone());
+    #[cfg(debug_assertions)]
+    let previewing = std::env::var_os("KEYRC_PREVIEW_KEYS").is_some();
+    #[cfg(not(debug_assertions))]
+    let previewing = false;
+    if !previewing {
+        input::start_listener(sender.clone());
+    }
     theme::start_listener(sender);
 
     let animation_running = Rc::new(Cell::new(false));

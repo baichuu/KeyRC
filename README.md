@@ -80,3 +80,6 @@ The desktop launcher and tray use the original KeyRC icon from the Tauri app.
 Use `--no-build` to install an existing release binary or `--no-start` to avoid
 restarting KeyRC after installation. `XDG_DATA_HOME` and `KEYRC_BIN_DIR` are
 respected when set.
+
+Special-key SVGs follow KeyCastr's symbol set without requiring Apple fonts.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.

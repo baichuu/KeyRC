@@ -1,5 +1,5 @@
 use crate::icons::{draw as draw_icon, Icons, ModifierIcon, SpecialIcon};
-use crate::keys::{display_text, is_arrow};
+use crate::keys::display_text;
 use crate::model::{
     AppState, Color, DisplayMode, StoredKey, KEY_HEIGHT, MAX_DISPLAY_UNITS, MODIFIER_HEIGHT,
     MODIFIER_Y, WIDTH,
@@ -106,8 +106,7 @@ fn key_width(context: &Context, key: &StoredKey, mode: DisplayMode, caps_lock: b
                 36.0
             }
         } else {
-            let size = if is_arrow(key.key) { 44.0 } else { 36.0 };
-            text_width(context, &display_text(key.key, caps_lock), size)
+            text_width(context, &display_text(key.key, caps_lock), 36.0)
         }
 }
 
@@ -172,10 +171,10 @@ fn draw_key_token(
     let mut cursor = x;
     if state.theme.mode == DisplayMode::KeysOnly {
         for (active, icon) in [
-            (key.modifiers.super_key, ModifierIcon::Super),
             (key.modifiers.ctrl, ModifierIcon::Ctrl),
             (key.modifiers.alt, ModifierIcon::Alt),
             (key.modifiers.shift, ModifierIcon::Shift),
+            (key.modifiers.super_key, ModifierIcon::Super),
         ] {
             if active {
                 draw_modifier(
@@ -202,7 +201,7 @@ fn draw_key_token(
             state.theme.key_text.with_alpha(eased),
         );
     } else {
-        let size = if is_arrow(key.key) { 44.0 } else { 36.0 };
+        let size = 36.0;
         let text = display_text(key.key, state.caps_lock);
         draw_centered_text(
             context,

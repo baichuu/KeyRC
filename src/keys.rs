@@ -16,10 +16,6 @@ pub(crate) fn is_alias(key: &str) -> bool {
     alias(key) != key
 }
 
-pub(crate) fn is_arrow(key: &str) -> bool {
-    matches!(key, "" | "" | "" | "")
-}
-
 pub(crate) fn display_text(key: &str, caps_lock: bool) -> String {
     let key = alias(key);
     if key.len() == 1 && key.as_bytes()[0].is_ascii_uppercase() && !caps_lock {
