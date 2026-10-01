@@ -56,12 +56,8 @@ or invalid cache uses the window manager's default placement.
 Build the standalone release binary with:
 
 ```sh
-cargo build --manifest-path src-tauri/Cargo.toml --release --locked
+cargo build --release --locked
 ```
 
-The output is `src-tauri/target/release/keyrc`. Runtime dependencies are GTK 3,
+The output is `target/release/keyrc`. Runtime dependencies are GTK 3,
 AppIndicator, and X11 access for the global keyboard listener.
-
-### Recommended IDE setup
-
-[VS Code](https://code.visualstudio.com/) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).

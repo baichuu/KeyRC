@@ -5,10 +5,6 @@ description = "A lightweight native GTK keystroke overlay"
 authors = ["baiyuechu"]
 edition = "2021"
 
-[lib]
-name = "keyrc_lib"
-crate-type = ["rlib"]
-
 [dependencies]
 gtk = "0.18"
 libappindicator = "0.9"
