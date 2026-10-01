@@ -906,6 +906,7 @@ fn configure_window(window: &gtk::Window, height: i32) {
     window.set_decorated(false);
     window.set_resizable(false);
     window.set_keep_above(true);
+    window.unstick();
     window.set_skip_taskbar_hint(true);
     window.set_skip_pager_hint(true);
     window.set_accept_focus(false);
@@ -1044,8 +1045,12 @@ pub fn run() {
     });
     let _tray = setup_tray();
     window.show_all();
+    // Some window managers restore a previous sticky state when the native
+    // window is mapped. Clear it again so KeyRC stays on this workspace only.
+    window.unstick();
     window.set_accept_focus(false);
     if let Some(native) = window.window() {
+        native.unstick();
         native.set_accept_focus(false);
     }
     gtk::main();
