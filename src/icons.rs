@@ -19,7 +19,7 @@ const PAGE_UP: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap=
 const PAGE_DOWN: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v15m-5-5 5 5 5-5M8 10h8M8 6h8"/>"#;
 const CAPS_LOCK: &str = r#"<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="m4 12 8-8 8 8h-5v5H9v-5z"/><path d="M8 21h8"/></g>"#;
 
-const SHIFT: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m4 12 8-8 8 8h-5v8H9v-8z"/>"#;
+const SHIFT: &str = r#"<path fill="currentColor" transform="scale(1.5)" d="M7.27 2.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H11.5v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3H1.654C.78 10.5.326 9.455.924 8.816zM14.346 9.5 8 2.731 1.654 9.5H4.5a1 1 0 0 1 1 1v3h5v-3a1 1 0 0 1 1-1z"/>"#;
 const CTRL: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m5 15 7-7 7 7"/>"#;
 const ALT: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7h5l7 10h4M14 7h6"/>"#;
 const SUPER: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 6v12c0 2.7 3.3 4 5.2 2.2S20.7 15 18 15H6c-2.7 0-4 3.3-2.2 5.2S9 20.7 9 18V6c0-2.7-3.3-4-5.2-2.2S3.3 9 6 9h12c2.7 0 4-3.3 2.2-5.2S15 3.3 15 6"/>"#;
