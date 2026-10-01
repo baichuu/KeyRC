@@ -20,8 +20,8 @@ use std::time::{Duration, Instant, SystemTime};
 
 const WIDTH: i32 = 290;
 const KEY_HEIGHT: i32 = 70;
-const FULL_HEIGHT: i32 = 116;
-const MODIFIER_Y: f64 = 74.0;
+const FULL_HEIGHT: i32 = 114;
+const MODIFIER_Y: f64 = 72.0;
 const MODIFIER_HEIGHT: f64 = 42.0;
 const CORNER_RADIUS: f64 = 24.0;
 const FONT: &str = "Iosevka Nerd Font Mono";
@@ -1076,10 +1076,14 @@ pub fn run() {
         glib::Propagation::Stop
     });
     window.connect_delete_event(|_, _| glib::Propagation::Stop);
+    let position_ready = Rc::new(Cell::new(false));
     if let Some(path) = position_path {
         let position_sender = start_position_writer(path);
+        let position_ready = Rc::clone(&position_ready);
         window.connect_configure_event(move |_, event| {
-            let _ = position_sender.send(event.position());
+            if position_ready.get() {
+                let _ = position_sender.send(event.position());
+            }
             false
         });
     }
@@ -1139,6 +1143,11 @@ pub fn run() {
         native.stick();
         native.set_accept_focus(false);
     }
+    // Ignore startup configure events, which may report (0, 0) before the
+    // window manager applies the cached position.
+    glib::timeout_add_local_once(Duration::from_millis(500), move || {
+        position_ready.set(true);
+    });
     gtk::main();
 }
 

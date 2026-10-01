@@ -29,7 +29,7 @@ All pressed modifiers share `active_bg` and `active_fg`. Inactive symbols use
 cells; `border` outlines them. Colors accept `#RRGGBB` or `#RRGGBBAA`; invalid or
 missing colors use black/white defaults.
 
-`mode = "full"` (the default) shows the key history and modifier row at 290 × 116.
+`mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
 Inline modifier symbols remain visible in both modes. Shift combinations keep
 the letter label lowercase; Caps Lock makes letters uppercase.
