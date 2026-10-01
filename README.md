@@ -46,8 +46,8 @@ Moves and normal window closure save the position atomically.
 
 The native window restores its size, mode, and cached position before it is
 shown. This avoids displaying it at the default position before moving it.
-The popup stays on the workspace where it was opened. It does not accept focus
-and cannot be closed through the window manager; dragging is its only direct
+The popup remains visible on every workspace. It does not accept focus and
+cannot be closed through the window manager; dragging is its only direct
 interaction. Use the tray icon to toggle display mode or quit KeyRC. A missing
 or invalid cache uses the window manager's default placement.
 
