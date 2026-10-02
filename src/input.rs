@@ -129,54 +129,125 @@ fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
     }
 }
 
+struct Processor {
+    sender: glib::Sender<UiMessage>,
+    shortcut: Arc<RwLock<Shortcut>>,
+    toggle_latched: bool,
+    held: u8,
+    chord_complete: bool,
+}
+
+impl Processor {
+    fn new(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) -> Self {
+        Self {
+            sender,
+            shortcut,
+            toggle_latched: false,
+            held: 0,
+            chord_complete: false,
+        }
+    }
+
+    fn press_modifier(&mut self, key: &'static str, held: u8) {
+        if self.chord_complete {
+            self.send_held_modifiers(self.held);
+            self.chord_complete = false;
+        }
+        self.held = held;
+        let _ = self.sender.send(UiMessage::Modifiers(modifiers(held)));
+        self.send_key(key);
+    }
+
+    fn release_modifier(&mut self, held: u8) {
+        let modifiers = modifiers(held);
+        self.held = held;
+        if held == 0 {
+            self.chord_complete = false;
+        }
+        if self
+            .shortcut
+            .read()
+            .is_ok_and(|active| !active.modifier_held(modifiers))
+        {
+            self.toggle_latched = false;
+        }
+        let _ = self.sender.send(UiMessage::Modifiers(modifiers));
+    }
+
+    fn press_key(&mut self, key: &'static str, held: u8) {
+        if self.chord_complete && held != 0 {
+            self.send_held_modifiers(held);
+        }
+        self.held = held;
+        let toggle = self
+            .shortcut
+            .read()
+            .is_ok_and(|active| active.matches(key, modifiers(held)));
+        if toggle && !self.toggle_latched {
+            self.toggle_latched = true;
+            if let Err(error) = theme::toggle_mode() {
+                eprintln!("Could not toggle KeyRC mode: {error}");
+            }
+        }
+        self.send_key(key);
+        self.chord_complete = held != 0;
+    }
+
+    fn release_key(&mut self, key: &str) {
+        if self
+            .shortcut
+            .read()
+            .is_ok_and(|active| !active.has_modifiers() && active.key.eq_ignore_ascii_case(key))
+        {
+            self.toggle_latched = false;
+        }
+    }
+
+    fn send_held_modifiers(&self, held: u8) {
+        for (mask, key) in [
+            (SHIFT_LEFT | SHIFT_RIGHT, "Shift"),
+            (CTRL_LEFT | CTRL_RIGHT, "Ctrl"),
+            (ALT_LEFT | ALT_RIGHT, "Alt"),
+            (SUPER_LEFT | SUPER_RIGHT, "Super"),
+        ] {
+            if held & mask != 0 {
+                self.send_key(key);
+            }
+        }
+    }
+
+    fn send_key(&self, key: &'static str) {
+        let _ = self.sender.send(UiMessage::Key(KeyMessage { key }));
+    }
+}
+
 pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
     thread::Builder::new()
         .name("keyrc-input".into())
         .stack_size(256 * 1024)
         .spawn(move || {
             let mut held = 0_u8;
-            let mut toggle_latched = false;
+            let mut processor = Processor::new(sender, shortcut);
             listen(move |event| match event.event_type {
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {
                         if held & bit == 0 {
                             held |= bit;
-                            let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
-                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
+                            processor.press_modifier(key, held);
                         }
                     } else {
                         let key = key_name(key);
                         if !key.is_empty() {
-                            let toggle = shortcut
-                                .read()
-                                .is_ok_and(|active| active.matches(key, modifiers(held)));
-                            if toggle && !toggle_latched {
-                                toggle_latched = true;
-                                if let Err(error) = theme::toggle_mode() {
-                                    eprintln!("Could not toggle KeyRC mode: {error}");
-                                }
-                            }
-                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
+                            processor.press_key(key, held);
                         }
                     }
                 }
                 EventType::KeyRelease(key) => {
                     if let Some((bit, _)) = modifier_key(key) {
                         held &= !bit;
-                        if shortcut
-                            .read()
-                            .is_ok_and(|active| !active.modifier_held(modifiers(held)))
-                        {
-                            toggle_latched = false;
-                        }
-                        let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
+                        processor.release_modifier(held);
                     } else {
-                        let key = key_name(key);
-                        if shortcut.read().is_ok_and(|active| {
-                            !active.has_modifiers() && active.key.eq_ignore_ascii_case(key)
-                        }) {
-                            toggle_latched = false;
-                        }
+                        processor.release_key(key_name(key));
                     }
                 }
                 _ => {}
@@ -184,4 +255,56 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLo
             .expect("Could not listen to events");
         })
         .expect("Could not start input listener");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk::glib::ControlFlow;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    fn recorded_keys(run: impl FnOnce(&mut Processor)) -> Vec<&'static str> {
+        let context = glib::MainContext::new();
+        let _guard = context.acquire().expect("test main context is available");
+        #[allow(deprecated)]
+        let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
+        let keys = Rc::new(RefCell::new(Vec::new()));
+        let received = Rc::clone(&keys);
+        receiver.attach(Some(&context), move |message| {
+            if let UiMessage::Key(message) = message {
+                received.borrow_mut().push(message.key);
+            }
+            ControlFlow::Continue
+        });
+
+        let mut processor = Processor::new(sender, Arc::new(RwLock::new(Shortcut::default())));
+        run(&mut processor);
+        while context.pending() {
+            context.iteration(false);
+        }
+        let recorded = keys.borrow().clone();
+        recorded
+    }
+
+    #[test]
+    fn initial_combination_does_not_duplicate_modifiers() {
+        let keys = recorded_keys(|processor| {
+            processor.press_modifier("Ctrl", CTRL_LEFT);
+            processor.press_modifier("Alt", CTRL_LEFT | ALT_LEFT);
+            processor.press_key("X", CTRL_LEFT | ALT_LEFT);
+        });
+        assert_eq!(keys, ["Ctrl", "Alt", "X"]);
+    }
+
+    #[test]
+    fn held_modifiers_are_repeated_for_the_next_combination() {
+        let keys = recorded_keys(|processor| {
+            processor.press_modifier("Super", SUPER_LEFT);
+            processor.press_key("Tab", SUPER_LEFT);
+            processor.release_key("Tab");
+            processor.press_key("1", SUPER_LEFT);
+        });
+        assert_eq!(keys, ["Super", "Tab", "Super", "1"]);
+    }
 }
