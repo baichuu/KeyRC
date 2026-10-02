@@ -3,6 +3,10 @@
 A small always-on-top keystroke display drawn natively with GTK 3 and Cairo.
 It uses a single process and does not embed WebKit.
 
+<p align="center">
+  <img src="assets/keyrc-preview.png" alt="KeyRC showing keyboard shortcuts" width="520">
+</p>
+
 ## Configuration
 
 KeyRC reads `~/.config/keyrc/config.toml`. Mode, keymap, and color changes apply
