@@ -1,6 +1,8 @@
-use crate::model::{KeyMessage, Modifiers, UiMessage};
+use crate::model::{KeyMessage, Modifiers, Shortcut, UiMessage};
+use crate::theme;
 use gtk::glib;
 use rdev::{listen, EventType, Key};
+use std::sync::{Arc, RwLock};
 use std::thread;
 
 const SHIFT_LEFT: u8 = 1 << 0;
@@ -127,12 +129,13 @@ fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
     }
 }
 
-pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
+pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
     thread::Builder::new()
         .name("keyrc-input".into())
         .stack_size(256 * 1024)
         .spawn(move || {
             let mut held = 0_u8;
+            let mut toggle_latched = false;
             listen(move |event| match event.event_type {
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {
@@ -148,6 +151,15 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
                     } else {
                         let key = key_name(key);
                         if !key.is_empty() {
+                            let toggle = shortcut
+                                .read()
+                                .is_ok_and(|active| active.matches(key, modifiers(held)));
+                            if toggle && !toggle_latched {
+                                toggle_latched = true;
+                                if let Err(error) = theme::toggle_mode() {
+                                    eprintln!("Could not toggle KeyRC mode: {error}");
+                                }
+                            }
                             let _ = sender.send(UiMessage::Key(KeyMessage {
                                 key,
                                 modifiers: modifiers(held),
@@ -158,7 +170,20 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
                 EventType::KeyRelease(key) => {
                     if let Some((bit, _)) = modifier_key(key) {
                         held &= !bit;
+                        if shortcut
+                            .read()
+                            .is_ok_and(|active| !active.modifier_held(modifiers(held)))
+                        {
+                            toggle_latched = false;
+                        }
                         let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
+                    } else {
+                        let key = key_name(key);
+                        if shortcut.read().is_ok_and(|active| {
+                            !active.has_modifiers() && active.key.eq_ignore_ascii_case(key)
+                        }) {
+                            toggle_latched = false;
+                        }
                     }
                 }
                 _ => {}

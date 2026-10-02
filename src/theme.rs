@@ -1,10 +1,17 @@
-use crate::model::{Color, DisplayMode, Theme, UiMessage};
+use crate::model::{Color, DisplayMode, Shortcut, Theme, UiMessage};
 use gtk::gio::{self, prelude::*};
 use gtk::glib;
 use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
+
+#[derive(Clone, Default, PartialEq)]
+pub(crate) struct Settings {
+    pub(crate) theme: Theme,
+    pub(crate) toggle_mode: Shortcut,
+}
 
 pub(crate) fn path() -> Option<PathBuf> {
     std::env::var_os("HOME")
@@ -19,30 +26,43 @@ fn palette_color(table: Option<&toml::Table>, key: &str) -> Option<Color> {
         .and_then(Color::parse)
 }
 
-fn parse(contents: &str) -> Theme {
-    let mut theme = Theme::default();
+fn parse(contents: &str) -> Settings {
+    let mut settings = Settings::default();
     let Ok(config) = toml::from_str::<toml::Table>(contents) else {
-        return theme;
+        return settings;
     };
-    if config.get("mode").and_then(toml::Value::as_str) == Some("keys_only") {
-        theme.mode = DisplayMode::KeysOnly;
+    let mode = config
+        .get("general")
+        .and_then(toml::Value::as_table)
+        .and_then(|general| general.get("mode"))
+        .or_else(|| config.get("mode"))
+        .and_then(toml::Value::as_str);
+    if mode == Some("keys_only") {
+        settings.theme.mode = DisplayMode::KeysOnly;
     }
     let colors = config.get("colors").and_then(toml::Value::as_table);
     for (key, target) in [
-        ("active_bg", &mut theme.active_bg),
-        ("active_fg", &mut theme.active_fg),
-        ("key_text", &mut theme.key_text),
-        ("background", &mut theme.background),
-        ("border", &mut theme.border),
+        ("active_bg", &mut settings.theme.active_bg),
+        ("active_fg", &mut settings.theme.active_fg),
+        ("key_text", &mut settings.theme.key_text),
+        ("background", &mut settings.theme.background),
+        ("border", &mut settings.theme.border),
     ] {
         if let Some(color) = palette_color(colors, key) {
             *target = color;
         }
     }
-    theme
+    settings.toggle_mode = config
+        .get("keymap")
+        .and_then(toml::Value::as_table)
+        .and_then(|keymap| keymap.get("toggle_mode"))
+        .and_then(toml::Value::as_str)
+        .and_then(Shortcut::parse)
+        .unwrap_or_default();
+    settings
 }
 
-pub(crate) fn read(path: Option<&Path>) -> Theme {
+pub(crate) fn read(path: Option<&Path>) -> Settings {
     path.and_then(|path| fs::read_to_string(path).ok())
         .map(|contents| parse(&contents))
         .unwrap_or_default()
@@ -61,10 +81,26 @@ fn write_mode(path: &Path, mode: DisplayMode) -> Result<(), String> {
         line.split_once('=')
             .is_some_and(|(key, _)| key.trim() == "mode")
     }) {
-        lines[index] = replacement;
+        lines.remove(index);
+    }
+    let general = lines.iter().position(|line| line.trim() == "[general]");
+    if let Some(start) = general {
+        let end = lines[start + 1..]
+            .iter()
+            .position(|line| line.trim_start().starts_with('['))
+            .map_or(lines.len(), |offset| start + 1 + offset);
+        if let Some(index) = lines[start + 1..end].iter().position(|line| {
+            line.split_once('=')
+                .is_some_and(|(key, _)| key.trim() == "mode")
+        }) {
+            lines[start + 1 + index] = replacement;
+        } else {
+            lines.insert(start + 1, replacement);
+        }
     } else {
-        lines.insert(0, replacement);
-        lines.insert(1, String::new());
+        lines.insert(0, "[general]".into());
+        lines.insert(1, replacement);
+        lines.insert(2, String::new());
     }
     let updated = lines.join("\n") + "\n";
     let temporary = path.with_extension(format!("tmp.{}", std::process::id()));
@@ -78,10 +114,13 @@ fn write_mode(path: &Path, mode: DisplayMode) -> Result<(), String> {
 pub(crate) fn toggle_mode() -> Result<(), String> {
     let path = path().ok_or("HOME is unavailable")?;
     let current = read(Some(&path));
-    write_mode(&path, current.mode.toggled())
+    write_mode(&path, current.theme.mode.toggled())
 }
 
-pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) -> Option<gio::FileMonitor> {
+pub(crate) fn start_listener(
+    sender: glib::Sender<UiMessage>,
+    shortcut: Arc<RwLock<Shortcut>>,
+) -> Option<gio::FileMonitor> {
     let path = path()?;
     let directory = path.parent()?;
     fs::create_dir_all(directory).ok()?;
@@ -98,8 +137,13 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) -> Option<gio::Fil
         }
         let next = read(Some(&path));
         if next != *current.borrow() {
+            if let Ok(mut active) = shortcut.write() {
+                active.clone_from(&next.toggle_mode);
+            }
+            if next.theme != current.borrow().theme {
+                let _ = sender.send(UiMessage::Theme(next.theme.clone()));
+            }
             *current.borrow_mut() = next.clone();
-            let _ = sender.send(UiMessage::Theme(next));
         }
     });
     Some(monitor)
@@ -111,8 +155,12 @@ mod tests {
 
     #[test]
     fn parses_theme_and_mode() {
-        let theme = parse(
-            r##"mode = "keys_only"
+        let settings = parse(
+            r##"[general]
+mode = "keys_only"
+
+[keymap]
+toggle_mode = "Super+Shift+K"
 [colors]
 active_bg = "#112233"
 active_fg = "#aabbccdd"
@@ -121,9 +169,13 @@ background = "#010203"
 border = "#445566"
 "##,
         );
+        let theme = settings.theme;
         assert!(theme.mode == DisplayMode::KeysOnly);
         assert!(theme.active_bg == Color::rgb(0x11, 0x22, 0x33));
         assert_eq!(theme.active_fg.alpha, 0xdd as f64 / 255.0);
         assert!(theme.key_text == Color::rgb(255, 255, 255));
+        assert!(settings.toggle_mode.key == "K");
+        assert!(settings.toggle_mode.modifiers.shift);
+        assert!(settings.toggle_mode.modifiers.super_key);
     }
 }

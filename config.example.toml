@@ -1,5 +1,9 @@
 # ~/.config/keyrc/config.toml
+[general]
 mode = "keys_only" # "full" also displays the modifier row.
+
+[keymap]
+toggle_mode = "Ctrl+Alt+M"
 
 [colors]
 active_bg = "#121c29"

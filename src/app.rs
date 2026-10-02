@@ -11,6 +11,7 @@ use libappindicator::{AppIndicator, AppIndicatorStatus};
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 #[cfg(debug_assertions)]
 use std::time::Instant;
@@ -126,7 +127,9 @@ fn apply_preview_keys(mut state: AppState) -> AppState {
 pub(crate) fn run() {
     gtk::init().expect("Could not initialize GTK");
 
-    let initial_theme = theme::read(theme::path().as_deref());
+    let settings = theme::read(theme::path().as_deref());
+    let initial_theme = settings.theme;
+    let shortcut = Arc::new(RwLock::new(settings.toggle_mode));
     #[cfg(debug_assertions)]
     let initial_theme = apply_preview_mode(initial_theme);
 
@@ -184,9 +187,9 @@ pub(crate) fn run() {
     #[cfg(not(debug_assertions))]
     let previewing = false;
     if !previewing {
-        input::start_listener(sender.clone());
+        input::start_listener(sender.clone(), Arc::clone(&shortcut));
     }
-    let _theme_monitor = theme::start_listener(sender);
+    let _theme_monitor = theme::start_listener(sender, shortcut);
 
     let animation_running = Rc::new(Cell::new(false));
     let receiver_state = Rc::clone(&state);

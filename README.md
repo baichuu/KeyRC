@@ -5,11 +5,15 @@ It uses a single process and does not embed WebKit.
 
 ## Configuration
 
-KeyRC reads `~/.config/keyrc/config.toml`. Mode and color changes apply live
-within about 250 ms. The file has one mode and five colors:
+KeyRC reads `~/.config/keyrc/config.toml`. Mode, keymap, and color changes apply
+live. The file has one mode, one toggle shortcut, and five colors:
 
 ```toml
+[general]
 mode = "keys_only"
+
+[keymap]
+toggle_mode = "Ctrl+Alt+M"
 
 [colors]
 active_bg = "#121c29"
@@ -20,22 +24,26 @@ border = "#252f3c"
 ```
 
 ThemeSync writes the five colors directly into this file when the desktop theme
-changes, preserving `mode` and other settings. There is no separate KeyRC theme
-file or palette import. Without ThemeSync, edit these colors yourself. A minimal
-example is in [config.example.toml](config.example.toml).
+changes, preserving `[general]`, `[keymap]`, and other settings. There is no
+separate KeyRC theme file or palette import. Without ThemeSync, edit these colors
+yourself. A minimal example is in [config.example.toml](config.example.toml).
 
 All pressed modifiers share `active_bg` and `active_fg`. Inactive symbols use
 `key_text` at 35% opacity. `background` fills the key row and inactive modifier
 cells; `border` outlines them. Colors accept `#RRGGBB` or `#RRGGBBAA`; invalid or
 missing colors use black/white defaults.
 
-`mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
+`general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
 Inline modifier symbols remain visible in both modes. Shift combinations keep
 the letter label lowercase; Caps Lock makes letters uppercase.
 
 Missing or malformed TOML uses the default colors and `full` mode. Unknown mode
 values use `full`. KeyRC reads only its own configuration file.
+
+Press `Ctrl+Alt+M` to toggle between `full` and `keys_only`. Change
+`keymap.toggle_mode` to another combination such as `Super+Shift+K`; modifier
+names are `Ctrl`, `Alt`, `Shift`, and `Super`.
 
 ## Window position
 

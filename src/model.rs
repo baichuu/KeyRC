@@ -107,12 +107,76 @@ impl Color {
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Modifiers {
     pub(crate) shift: bool,
     pub(crate) ctrl: bool,
     pub(crate) alt: bool,
     pub(crate) super_key: bool,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct Shortcut {
+    pub(crate) modifiers: Modifiers,
+    pub(crate) key: String,
+}
+
+impl Default for Shortcut {
+    fn default() -> Self {
+        Self {
+            modifiers: Modifiers {
+                ctrl: true,
+                alt: true,
+                ..Modifiers::default()
+            },
+            key: "M".into(),
+        }
+    }
+}
+
+impl Shortcut {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        let mut modifiers = Modifiers::default();
+        let mut key = None;
+        for part in value.split('+') {
+            let part = part.trim();
+            if part.eq_ignore_ascii_case("shift") {
+                modifiers.shift = true;
+            } else if part.eq_ignore_ascii_case("ctrl") || part.eq_ignore_ascii_case("control") {
+                modifiers.ctrl = true;
+            } else if part.eq_ignore_ascii_case("alt") {
+                modifiers.alt = true;
+            } else if part.eq_ignore_ascii_case("super")
+                || part.eq_ignore_ascii_case("meta")
+                || part.eq_ignore_ascii_case("win")
+            {
+                modifiers.super_key = true;
+            } else if part.is_empty() || key.is_some() {
+                return None;
+            } else {
+                key = Some(part.to_owned());
+            }
+        }
+        Some(Self {
+            modifiers,
+            key: key?,
+        })
+    }
+
+    pub(crate) fn matches(&self, key: &str, modifiers: Modifiers) -> bool {
+        self.key.eq_ignore_ascii_case(key) && self.modifiers == modifiers
+    }
+
+    pub(crate) fn modifier_held(&self, modifiers: Modifiers) -> bool {
+        (!self.modifiers.shift || modifiers.shift)
+            && (!self.modifiers.ctrl || modifiers.ctrl)
+            && (!self.modifiers.alt || modifiers.alt)
+            && (!self.modifiers.super_key || modifiers.super_key)
+    }
+
+    pub(crate) fn has_modifiers(&self) -> bool {
+        self.modifiers.units() != 0
+    }
 }
 
 impl Modifiers {
