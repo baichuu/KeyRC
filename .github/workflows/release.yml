@@ -1,0 +1,101 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release, for example v0.1.0
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  CARGO_TERM_COLOR: always
+  RUSTUP_TOOLCHAIN: stable
+jobs:
+  linux-x86_64:
+    name: Linux x86_64 release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "tag=${DISPATCH_TAG}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Check out release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+      - name: Verify release source and version
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "Release tag must point to a commit on main" >&2
+            exit 1
+          }
+          package_version=$(cargo metadata --no-deps --format-version 1 | jq --raw-output '.packages[] | select(.name == "keyrc") | .version')
+          if [[ "${RELEASE_TAG}" != "v${package_version}" ]]; then
+            echo "Tag ${RELEASE_TAG} does not match Cargo.toml version ${package_version}" >&2
+            exit 1
+          fi
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libgtk-layer-shell-dev \
+            libx11-dev \
+            libxtst-dev
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
+      - name: Validate source
+        run: |
+          cargo fmt --all --check
+          cargo clippy --all-targets --locked -- -D warnings
+          cargo test --locked
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Package release
+        id: package
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          package="keyrc-${RELEASE_TAG}-linux-x86_64"
+          mkdir --parents "dist/${package}/assets"
+          install --mode 755 target/release/keyrc "dist/${package}/keyrc"
+          install --mode 644 LICENSE README.md config.example.toml "dist/${package}/"
+          install --mode 644 assets/keyrc.png "dist/${package}/assets/keyrc.png"
+          tar --create --gzip --file "dist/${package}.tar.gz" --directory dist "${package}"
+          sha256sum "dist/${package}.tar.gz" > "dist/${package}.tar.gz.sha256"
+          echo "archive=dist/${package}.tar.gz" >> "${GITHUB_OUTPUT}"
+          echo "checksum=dist/${package}.tar.gz.sha256" >> "${GITHUB_OUTPUT}"
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        run: |
+          if gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${ARCHIVE}" "${CHECKSUM}" --clobber
+          else
+            gh release create "${RELEASE_TAG}" "${ARCHIVE}" "${CHECKSUM}" \
+              --verify-tag \
+              --generate-notes \
+              --title "KeyRC ${RELEASE_TAG}"
+          fi

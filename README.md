@@ -95,6 +95,21 @@ respected when set.
 Special-key SVGs follow KeyCastr's symbol set without requiring Apple fonts.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.
 
+## Releases
+
+GitHub Actions checks formatting, runs Clippy and tests, builds the optimized
+Linux x86_64 binary, and stores it as a workflow artifact. To publish a GitHub
+Release, update the version in `Cargo.toml`, commit it to `main`, then push the
+matching tag:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release contains a `.tar.gz` package and its SHA-256 checksum. The Release
+workflow can also be run manually for an existing tag.
+
 ## License
 
 KeyRC is available under the [MIT License](LICENSE).
