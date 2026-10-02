@@ -214,7 +214,7 @@ fn draw_key_token(
             icon,
             cursor + 18.0,
             center_y,
-            state.theme.mode == DisplayMode::KeysOnly,
+            true,
             key_color,
         );
     } else {
