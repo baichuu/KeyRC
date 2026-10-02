@@ -47,10 +47,12 @@ names are `Ctrl`, `Alt`, `Shift`, and `Super`.
 
 ## Window position
 
-Position is runtime state stored in `$XDG_CACHE_HOME/keyrc/position` (normally
-`~/.cache/keyrc/position`), outside the configuration directory. Coordinates
-are physical pixels, including negative positions on multi-monitor desktops.
-Moves and normal window closure save the position atomically.
+Position is runtime state stored outside the configuration directory. X11 uses
+`$XDG_CACHE_HOME/keyrc/position` and Wayland uses
+`$XDG_CACHE_HOME/keyrc/position-wayland`. Moves save the position atomically.
+X11 coordinates are physical pixels and can be negative on multi-monitor
+desktops. Wayland layer-shell positions are non-negative margins from the top
+left of the compositor-selected output.
 
 The native window restores its size, mode, and cached position before it is
 shown. This avoids displaying it at the default position before moving it.
@@ -67,8 +69,17 @@ Build the standalone release binary with:
 cargo build --release --locked
 ```
 
-The output is `target/release/keyrc`. Runtime dependencies are GTK 3,
-AppIndicator, and X11 access for the global keyboard listener.
+The output is `target/release/keyrc`. Runtime dependencies are GTK 3 and
+AppIndicator. X11 capture uses XRecord. Wayland capture reads Linux evdev
+keyboards from `/dev/input/event*`, so the user running KeyRC needs read access
+to the input devices. On distributions using an `input` group, log out and back
+in after adding the user to that group.
+
+On KDE Plasma Wayland, KeyRC uses layer-shell for a non-focusable overlay that
+stays above normal windows and appears on every workspace. Compositors without
+layer-shell support fall back to a normal non-focusable GTK window. Set
+`KEYRC_BACKEND=x11` or `KEYRC_BACKEND=wayland` to override automatic backend
+detection while debugging.
 
 ## Install
 

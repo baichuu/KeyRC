@@ -69,7 +69,7 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
   gtk-update-icon-cache --force --ignore-theme-index "$icon_root" >/dev/null 2>&1 || true
 fi
 
-if $start && [[ -n ${DISPLAY:-} ]]; then
+if $start && [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
   mkdir -p "$cache_home"
   mapfile -t running_pids < <(pgrep -x keyrc || true)
   if ((${#running_pids[@]})); then

@@ -1,23 +1,17 @@
-use crate::model::{KeyMessage, Modifiers, Shortcut, UiMessage};
-use crate::theme;
+use super::{
+    Processor, ALT_LEFT, ALT_RIGHT, CTRL_LEFT, CTRL_RIGHT, SHIFT_LEFT, SHIFT_RIGHT, SUPER_LEFT,
+    SUPER_RIGHT,
+};
+use crate::model::{Shortcut, UiMessage};
 use gtk::glib;
 use rdev::{listen, EventType, Key};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
-const SHIFT_LEFT: u8 = 1 << 0;
-const SHIFT_RIGHT: u8 = 1 << 1;
-const CTRL_LEFT: u8 = 1 << 2;
-const CTRL_RIGHT: u8 = 1 << 3;
-const ALT_LEFT: u8 = 1 << 4;
-const ALT_RIGHT: u8 = 1 << 5;
-const SUPER_LEFT: u8 = 1 << 6;
-const SUPER_RIGHT: u8 = 1 << 7;
-
 fn key_name(key: Key) -> &'static str {
     match key {
         Key::Alt => "Alt",
-        Key::AltGr => "AltGr",
+        Key::AltGr => "Alt",
         Key::Backspace => "Backspace",
         Key::CapsLock => "CapsLock",
         Key::ControlLeft | Key::ControlRight => "Ctrl",
@@ -106,15 +100,6 @@ fn key_name(key: Key) -> &'static str {
     }
 }
 
-fn modifiers(held: u8) -> Modifiers {
-    Modifiers {
-        shift: held & (SHIFT_LEFT | SHIFT_RIGHT) != 0,
-        ctrl: held & (CTRL_LEFT | CTRL_RIGHT) != 0,
-        alt: held & (ALT_LEFT | ALT_RIGHT) != 0,
-        super_key: held & (SUPER_LEFT | SUPER_RIGHT) != 0,
-    }
-}
-
 fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
     match key {
         Key::ShiftLeft => Some((SHIFT_LEFT, "Shift")),
@@ -129,59 +114,50 @@ fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
     }
 }
 
-pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
+pub(super) fn start(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
     thread::Builder::new()
-        .name("keyrc-input".into())
+        .name("keyrc-x11-input".into())
         .stack_size(256 * 1024)
         .spawn(move || {
             let mut held = 0_u8;
-            let mut toggle_latched = false;
+            let mut processor = Processor::new(sender, shortcut);
             listen(move |event| match event.event_type {
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {
                         if held & bit == 0 {
                             held |= bit;
-                            let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
-                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
+                            processor.press_modifier(key, held);
                         }
                     } else {
                         let key = key_name(key);
                         if !key.is_empty() {
-                            let toggle = shortcut
-                                .read()
-                                .is_ok_and(|active| active.matches(key, modifiers(held)));
-                            if toggle && !toggle_latched {
-                                toggle_latched = true;
-                                if let Err(error) = theme::toggle_mode() {
-                                    eprintln!("Could not toggle KeyRC mode: {error}");
-                                }
-                            }
-                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
+                            processor.press_key(key, held);
                         }
                     }
                 }
                 EventType::KeyRelease(key) => {
                     if let Some((bit, _)) = modifier_key(key) {
                         held &= !bit;
-                        if shortcut
-                            .read()
-                            .is_ok_and(|active| !active.modifier_held(modifiers(held)))
-                        {
-                            toggle_latched = false;
-                        }
-                        let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
+                        processor.release_modifier(held);
                     } else {
-                        let key = key_name(key);
-                        if shortcut.read().is_ok_and(|active| {
-                            !active.has_modifiers() && active.key.eq_ignore_ascii_case(key)
-                        }) {
-                            toggle_latched = false;
-                        }
+                        processor.release_key(key_name(key));
                     }
                 }
                 _ => {}
             })
-            .expect("Could not listen to events");
+            .expect("Could not listen to X11 events");
         })
-        .expect("Could not start input listener");
+        .expect("Could not start X11 input listener");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_x11_keys() {
+        assert_eq!(key_name(Key::KeyA), "A");
+        assert_eq!(key_name(Key::KpReturn), "Enter");
+        assert_eq!(modifier_key(Key::MetaLeft), Some((SUPER_LEFT, "Super")));
+    }
 }

@@ -3,6 +3,7 @@ use crate::input;
 use crate::model::{AppState, UiMessage, WIDTH};
 #[cfg(debug_assertions)]
 use crate::model::{DisplayMode, KeyMessage};
+use crate::platform::Backend;
 use crate::{position, render, theme};
 use gtk::gdk;
 use gtk::glib::{self, ControlFlow};
@@ -64,12 +65,14 @@ fn setup_tray() -> AppIndicator {
     indicator
 }
 
-fn configure_window(window: &gtk::Window, height: i32) {
+fn configure_window(window: &gtk::Window, height: i32, backend: Backend) {
     window.set_title("keyrc");
     window.set_decorated(false);
     window.set_resizable(false);
-    window.set_keep_above(true);
-    window.stick();
+    if backend == Backend::X11 {
+        window.set_keep_above(true);
+        window.stick();
+    }
     window.set_skip_taskbar_hint(true);
     window.set_skip_pager_hint(true);
     window.set_accept_focus(false);
@@ -130,6 +133,7 @@ fn apply_preview_keys(mut state: AppState) -> AppState {
 
 pub(crate) fn run() {
     gtk::init().expect("Could not initialize GTK");
+    let backend = Backend::detect();
 
     let settings = theme::read(theme::path().as_deref());
     let initial_theme = settings.theme;
@@ -144,15 +148,18 @@ pub(crate) fn run() {
     let state = Rc::new(RefCell::new(initial_state));
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
-    configure_window(&window, initial_theme.mode.height());
-    let position_path = position::path();
-    if let Some((x, y)) = position::read(position_path.as_deref()) {
-        window.move_(x, y);
-    }
+    configure_window(&window, initial_theme.mode.height(), backend);
+    let position_path = position::path(backend.position_file());
+    let initial_position = position::read(position_path.as_deref());
+    let (initial_position, layer_shell) = backend.configure_window(&window, initial_position);
 
     let drawing_area = gtk::DrawingArea::new();
     drawing_area.set_size_request(WIDTH, initial_theme.mode.height());
-    drawing_area.add_events(gdk::EventMask::BUTTON_PRESS_MASK);
+    drawing_area.add_events(
+        gdk::EventMask::BUTTON_PRESS_MASK
+            | gdk::EventMask::BUTTON_RELEASE_MASK
+            | gdk::EventMask::POINTER_MOTION_MASK,
+    );
     window.add(&drawing_area);
 
     let draw_state = Rc::clone(&state);
@@ -162,26 +169,69 @@ pub(crate) fn run() {
         glib::Propagation::Stop
     });
 
-    let drag_window = window.clone();
-    drawing_area.connect_button_press_event(move |_, event| {
-        if event.button() == 1 {
-            let (x, y) = event.root();
-            drag_window.begin_move_drag(1, x as i32, y as i32, event.time());
-        }
-        glib::Propagation::Stop
-    });
+    if !layer_shell {
+        let drag_window = window.clone();
+        drawing_area.connect_button_press_event(move |_, event| {
+            if event.button() == 1 {
+                let (x, y) = event.root();
+                drag_window.begin_move_drag(1, x as i32, y as i32, event.time());
+            }
+            glib::Propagation::Stop
+        });
+    } else {
+        let current_position = Rc::new(Cell::new(initial_position));
+        let drag = Rc::new(RefCell::new(None));
+        let press_drag = Rc::clone(&drag);
+        drawing_area.connect_button_press_event(move |_, event| {
+            if event.button() == 1 {
+                let (pointer_x, pointer_y) = event.position();
+                *press_drag.borrow_mut() = Some((pointer_x, pointer_y));
+            }
+            glib::Propagation::Stop
+        });
+
+        let move_window = window.clone();
+        let move_drag = Rc::clone(&drag);
+        let move_position = Rc::clone(&current_position);
+        let write_position = position_path
+            .clone()
+            .map(position::start_writer)
+            .map(Rc::new);
+        drawing_area.connect_motion_notify_event(move |_, event| {
+            if let Some((start_x, start_y)) = *move_drag.borrow() {
+                let (pointer_x, pointer_y) = event.position();
+                let (window_x, window_y) = move_position.get();
+                let x = (window_x + (pointer_x - start_x) as i32).max(0);
+                let y = (window_y + (pointer_y - start_y) as i32).max(0);
+                backend.set_wayland_position(&move_window, x, y);
+                move_position.set((x, y));
+                if let Some(writer) = &write_position {
+                    writer((x, y));
+                }
+            }
+            glib::Propagation::Stop
+        });
+        drawing_area.connect_button_release_event(move |_, event| {
+            if event.button() == 1 {
+                *drag.borrow_mut() = None;
+            }
+            glib::Propagation::Stop
+        });
+    }
     window.connect_delete_event(|_, _| glib::Propagation::Stop);
 
     let position_ready = Rc::new(Cell::new(false));
-    if let Some(path) = position_path {
-        let write_position = position::start_writer(path);
-        let position_ready = Rc::clone(&position_ready);
-        window.connect_configure_event(move |_, event| {
-            if position_ready.get() {
-                write_position(event.position());
-            }
-            false
-        });
+    if backend == Backend::X11 {
+        if let Some(path) = position_path {
+            let write_position = position::start_writer(path);
+            let position_ready = Rc::clone(&position_ready);
+            window.connect_configure_event(move |_, event| {
+                if position_ready.get() {
+                    write_position(event.position());
+                }
+                false
+            });
+        }
     }
 
     #[allow(deprecated)]
@@ -191,7 +241,7 @@ pub(crate) fn run() {
     #[cfg(not(debug_assertions))]
     let previewing = false;
     if !previewing {
-        input::start_listener(sender.clone(), Arc::clone(&shortcut));
+        input::start_listener(backend, sender.clone(), Arc::clone(&shortcut));
     }
     let _theme_monitor = theme::start_listener(sender, shortcut);
 
@@ -244,10 +294,14 @@ pub(crate) fn run() {
 
     let _tray = setup_tray();
     window.show_all();
-    window.stick();
+    if backend == Backend::X11 {
+        window.stick();
+    }
     window.set_accept_focus(false);
     if let Some(native) = window.window() {
-        native.stick();
+        if backend == Backend::X11 {
+            native.stick();
+        }
         native.set_accept_focus(false);
     }
 

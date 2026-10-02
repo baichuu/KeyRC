@@ -241,3 +241,23 @@ pub(crate) enum UiMessage {
     Modifiers(Modifiers),
     Theme(Theme),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn key_history_does_not_expand_combination_modifiers() {
+        for mode in [DisplayMode::Full, DisplayMode::KeysOnly] {
+            let mut state = AppState::new(Theme {
+                mode,
+                ..Theme::default()
+            });
+            for key in ["Ctrl", "Alt", "M"] {
+                state.push_key(KeyMessage { key });
+            }
+            let history: Vec<_> = state.history.iter().rev().map(|key| key.key).collect();
+            assert_eq!(history, ["Ctrl", "Alt", "M"]);
+        }
+    }
+}

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-pub(crate) fn path() -> Option<PathBuf> {
+pub(crate) fn path(file_name: &str) -> Option<PathBuf> {
     std::env::var_os("XDG_CACHE_HOME")
         .map(PathBuf::from)
         .or_else(|| {
@@ -13,7 +13,7 @@ pub(crate) fn path() -> Option<PathBuf> {
                 .map(PathBuf::from)
                 .map(|home| home.join(".cache"))
         })
-        .map(|cache| cache.join("keyrc/position"))
+        .map(|cache| cache.join("keyrc").join(file_name))
 }
 
 fn parse(contents: &str) -> Option<(i32, i32)> {
