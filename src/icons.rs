@@ -66,12 +66,24 @@ impl SpecialIcon {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum ModifierIcon {
     Shift,
     Ctrl,
     Alt,
     Super,
+}
+
+impl ModifierIcon {
+    pub(crate) fn from_key(key: &str) -> Option<Self> {
+        match key {
+            "Shift" => Some(Self::Shift),
+            "Ctrl" => Some(Self::Ctrl),
+            "Alt" => Some(Self::Alt),
+            "Super" => Some(Self::Super),
+            _ => None,
+        }
+    }
 }
 
 struct IconPair {
@@ -181,5 +193,7 @@ mod tests {
             Some(SpecialIcon::PageDown)
         );
         assert_eq!(SpecialIcon::from_key("A"), None);
+        assert_eq!(ModifierIcon::from_key("Shift"), Some(ModifierIcon::Shift));
+        assert_eq!(ModifierIcon::from_key("A"), None);
     }
 }

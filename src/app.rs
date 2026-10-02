@@ -215,6 +215,10 @@ pub(crate) fn run() {
                     });
                 }
             }
+            UiMessage::Modifiers(modifiers) => {
+                receiver_state.borrow_mut().active_modifiers = modifiers;
+                receiver_area.queue_draw();
+            }
             UiMessage::Theme(theme) => {
                 let old_mode = receiver_state.borrow().theme.mode;
                 let new_mode = theme.mode;

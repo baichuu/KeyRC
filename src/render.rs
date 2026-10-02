@@ -105,6 +105,8 @@ fn key_width(context: &Context, key: &StoredKey, mode: DisplayMode, caps_lock: b
             } else {
                 36.0
             }
+        } else if ModifierIcon::from_key(key.key).is_some() {
+            36.0
         } else {
             text_width(context, &display_text(key.key, caps_lock), 36.0)
         }
@@ -201,6 +203,16 @@ fn draw_key_token(
             icons,
             key.key,
             cursor,
+            center_y,
+            state.theme.mode == DisplayMode::KeysOnly,
+            key_color,
+        );
+    } else if let Some(icon) = ModifierIcon::from_key(key.key) {
+        draw_modifier(
+            context,
+            icons,
+            icon,
+            cursor + 18.0,
             center_y,
             state.theme.mode == DisplayMode::KeysOnly,
             key_color,

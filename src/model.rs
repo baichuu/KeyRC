@@ -158,7 +158,6 @@ impl AppState {
         if message.key == "CapsLock" {
             self.caps_lock = !self.caps_lock;
         }
-        self.active_modifiers = message.modifiers;
         let reset = is_alias(message.key)
             || self
                 .history
@@ -178,5 +177,6 @@ impl AppState {
 
 pub(crate) enum UiMessage {
     Key(KeyMessage),
+    Modifiers(Modifiers),
     Theme(Theme),
 }

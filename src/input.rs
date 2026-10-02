@@ -113,6 +113,20 @@ fn modifiers(held: u8) -> Modifiers {
     }
 }
 
+fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
+    match key {
+        Key::ShiftLeft => Some((SHIFT_LEFT, "Shift")),
+        Key::ShiftRight => Some((SHIFT_RIGHT, "Shift")),
+        Key::ControlLeft => Some((CTRL_LEFT, "Ctrl")),
+        Key::ControlRight => Some((CTRL_RIGHT, "Ctrl")),
+        Key::Alt => Some((ALT_LEFT, "Alt")),
+        Key::AltGr => Some((ALT_RIGHT, "Alt")),
+        Key::MetaLeft => Some((SUPER_LEFT, "Super")),
+        Key::MetaRight => Some((SUPER_RIGHT, "Super")),
+        _ => None,
+    }
+}
+
 pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
     thread::Builder::new()
         .name("keyrc-input".into())
@@ -120,16 +134,18 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
         .spawn(move || {
             let mut held = 0_u8;
             listen(move |event| match event.event_type {
-                EventType::KeyPress(key) => match key {
-                    Key::ShiftLeft => held |= SHIFT_LEFT,
-                    Key::ShiftRight => held |= SHIFT_RIGHT,
-                    Key::ControlLeft => held |= CTRL_LEFT,
-                    Key::ControlRight => held |= CTRL_RIGHT,
-                    Key::Alt => held |= ALT_LEFT,
-                    Key::AltGr => held |= ALT_RIGHT,
-                    Key::MetaLeft => held |= SUPER_LEFT,
-                    Key::MetaRight => held |= SUPER_RIGHT,
-                    key => {
+                EventType::KeyPress(key) => {
+                    if let Some((bit, key)) = modifier_key(key) {
+                        if held & bit == 0 {
+                            let chord = modifiers(held);
+                            held |= bit;
+                            let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
+                            let _ = sender.send(UiMessage::Key(KeyMessage {
+                                key,
+                                modifiers: chord,
+                            }));
+                        }
+                    } else {
                         let key = key_name(key);
                         if !key.is_empty() {
                             let _ = sender.send(UiMessage::Key(KeyMessage {
@@ -138,18 +154,13 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
                             }));
                         }
                     }
-                },
-                EventType::KeyRelease(key) => match key {
-                    Key::ShiftLeft => held &= !SHIFT_LEFT,
-                    Key::ShiftRight => held &= !SHIFT_RIGHT,
-                    Key::ControlLeft => held &= !CTRL_LEFT,
-                    Key::ControlRight => held &= !CTRL_RIGHT,
-                    Key::Alt => held &= !ALT_LEFT,
-                    Key::AltGr => held &= !ALT_RIGHT,
-                    Key::MetaLeft => held &= !SUPER_LEFT,
-                    Key::MetaRight => held &= !SUPER_RIGHT,
-                    _ => {}
-                },
+                }
+                EventType::KeyRelease(key) => {
+                    if let Some((bit, _)) = modifier_key(key) {
+                        held &= !bit;
+                        let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
+                    }
+                }
                 _ => {}
             })
             .expect("Could not listen to events");
