@@ -83,3 +83,7 @@ respected when set.
 
 Special-key SVGs follow KeyCastr's symbol set without requiring Apple fonts.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.
+
+## License
+
+KeyRC is available under the [MIT License](LICENSE).

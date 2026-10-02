@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A lightweight native GTK keystroke overlay"
 authors = ["baiyuechu"]
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 gtk = "0.18"
