@@ -2,7 +2,7 @@ use super::{
     Processor, ALT_LEFT, ALT_RIGHT, CTRL_LEFT, CTRL_RIGHT, SHIFT_LEFT, SHIFT_RIGHT, SUPER_LEFT,
     SUPER_RIGHT,
 };
-use crate::model::{Shortcut, UiMessage};
+use crate::model::{Keymap, UiMessage};
 use evdev::{Device, EventSummary, KeyCode};
 use gtk::glib;
 use nix::poll::{poll, PollFd, PollFlags};
@@ -192,9 +192,9 @@ fn handle_key(
     }
 }
 
-fn listen(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
+fn listen(sender: glib::Sender<UiMessage>, keymap: Arc<RwLock<Keymap>>) {
     let mut keyboards = Vec::new();
-    let mut processor = Processor::new(sender, shortcut);
+    let mut processor = Processor::new(sender, keymap);
     let mut warned_no_keyboard = false;
     loop {
         add_keyboards(&mut keyboards);
@@ -256,11 +256,11 @@ fn listen(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
     }
 }
 
-pub(super) fn start(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
+pub(super) fn start(sender: glib::Sender<UiMessage>, keymap: Arc<RwLock<Keymap>>) {
     thread::Builder::new()
         .name("keyrc-evdev-input".into())
         .stack_size(512 * 1024)
-        .spawn(move || listen(sender, shortcut))
+        .spawn(move || listen(sender, keymap))
         .expect("Could not start evdev input listener");
 }
 

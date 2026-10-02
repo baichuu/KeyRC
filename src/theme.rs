@@ -1,4 +1,4 @@
-use crate::model::{Color, DisplayMode, Shortcut, Theme, UiMessage};
+use crate::model::{Color, DisplayMode, Keymap, Shortcut, Theme, UiMessage};
 use gtk::gio::{self, prelude::*};
 use gtk::glib;
 use std::cell::RefCell;
@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 #[derive(Clone, Default, PartialEq)]
 pub(crate) struct Settings {
     pub(crate) theme: Theme,
-    pub(crate) toggle_mode: Shortcut,
+    pub(crate) keymap: Keymap,
 }
 
 pub(crate) fn path() -> Option<PathBuf> {
@@ -52,13 +52,17 @@ fn parse(contents: &str) -> Settings {
             *target = color;
         }
     }
-    settings.toggle_mode = config
-        .get("keymap")
-        .and_then(toml::Value::as_table)
-        .and_then(|keymap| keymap.get("toggle_mode"))
+    let keymap = config.get("keymap").and_then(toml::Value::as_table);
+    settings.keymap.toggle_mode = keymap
+        .and_then(|values| values.get("toggle_mode"))
         .and_then(toml::Value::as_str)
         .and_then(Shortcut::parse)
         .unwrap_or_default();
+    settings.keymap.quit = keymap
+        .and_then(|values| values.get("quit"))
+        .and_then(toml::Value::as_str)
+        .and_then(Shortcut::parse)
+        .unwrap_or_else(|| Keymap::default().quit);
     settings
 }
 
@@ -119,7 +123,7 @@ pub(crate) fn toggle_mode() -> Result<(), String> {
 
 pub(crate) fn start_listener(
     sender: glib::Sender<UiMessage>,
-    shortcut: Arc<RwLock<Shortcut>>,
+    keymap: Arc<RwLock<Keymap>>,
 ) -> Option<gio::FileMonitor> {
     let path = path()?;
     let directory = path.parent()?;
@@ -137,8 +141,8 @@ pub(crate) fn start_listener(
         }
         let next = read(Some(&path));
         if next != *current.borrow() {
-            if let Ok(mut active) = shortcut.write() {
-                active.clone_from(&next.toggle_mode);
+            if let Ok(mut active) = keymap.write() {
+                active.clone_from(&next.keymap);
             }
             if next.theme != current.borrow().theme {
                 let _ = sender.send(UiMessage::Theme(next.theme.clone()));
@@ -161,6 +165,7 @@ mode = "keys_only"
 
 [keymap]
 toggle_mode = "Super+Shift+K"
+quit = "Ctrl+Escape"
 [colors]
 active_bg = "#112233"
 active_fg = "#aabbccdd"
@@ -174,8 +179,18 @@ border = "#445566"
         assert!(theme.active_bg == Color::rgb(0x11, 0x22, 0x33));
         assert_eq!(theme.active_fg.alpha, 0xdd as f64 / 255.0);
         assert!(theme.key_text == Color::rgb(255, 255, 255));
-        assert!(settings.toggle_mode.key == "K");
-        assert!(settings.toggle_mode.modifiers.shift);
-        assert!(settings.toggle_mode.modifiers.super_key);
+        assert!(settings.keymap.toggle_mode.key == "K");
+        assert!(settings.keymap.toggle_mode.modifiers.shift);
+        assert!(settings.keymap.toggle_mode.modifiers.super_key);
+        assert!(settings.keymap.quit.key == "Escape");
+        assert!(settings.keymap.quit.modifiers.ctrl);
+    }
+
+    #[test]
+    fn uses_default_quit_shortcut_when_missing() {
+        let settings = parse("");
+        assert_eq!(settings.keymap.quit.key, "Q");
+        assert!(settings.keymap.quit.modifiers.ctrl);
+        assert!(settings.keymap.quit.modifiers.alt);
     }
 }

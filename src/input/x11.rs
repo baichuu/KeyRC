@@ -2,7 +2,7 @@ use super::{
     Processor, ALT_LEFT, ALT_RIGHT, CTRL_LEFT, CTRL_RIGHT, SHIFT_LEFT, SHIFT_RIGHT, SUPER_LEFT,
     SUPER_RIGHT,
 };
-use crate::model::{Shortcut, UiMessage};
+use crate::model::{Keymap, UiMessage};
 use gtk::glib;
 use rdev::{listen, EventType, Key};
 use std::sync::{Arc, RwLock};
@@ -114,13 +114,13 @@ fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
     }
 }
 
-pub(super) fn start(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
+pub(super) fn start(sender: glib::Sender<UiMessage>, keymap: Arc<RwLock<Keymap>>) {
     thread::Builder::new()
         .name("keyrc-x11-input".into())
         .stack_size(256 * 1024)
         .spawn(move || {
             let mut held = 0_u8;
-            let mut processor = Processor::new(sender, shortcut);
+            let mut processor = Processor::new(sender, keymap);
             listen(move |event| match event.event_type {
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {

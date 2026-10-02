@@ -14,6 +14,7 @@ mode = "keys_only"
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"
+quit = "Ctrl+Alt+Q"
 
 [colors]
 active_bg = "#121c29"
@@ -44,9 +45,10 @@ Lock makes letters uppercase.
 Missing or malformed TOML uses the default colors and `full` mode. Unknown mode
 values use `full`. KeyRC reads only its own configuration file.
 
-Press `Ctrl+Alt+M` to toggle between `full` and `keys_only`. Change
-`keymap.toggle_mode` to another combination such as `Super+Shift+K`; modifier
-names are `Ctrl`, `Alt`, `Shift`, and `Super`.
+Press `Ctrl+Alt+M` to toggle between `full` and `keys_only`, or `Ctrl+Alt+Q` to
+quit KeyRC. Change `keymap.toggle_mode` and `keymap.quit` to other combinations;
+modifier names are `Ctrl`, `Alt`, `Shift`, and `Super`. Both shortcuts update
+live when `config.toml` changes.
 
 ## Window position
 

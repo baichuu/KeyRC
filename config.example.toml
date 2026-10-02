@@ -4,6 +4,7 @@ mode = "keys_only" # "full" also displays the modifier row.
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"
+quit = "Ctrl+Alt+Q"
 
 [colors]
 active_bg = "#121c29"

@@ -137,7 +137,7 @@ pub(crate) fn run() {
 
     let settings = theme::read(theme::path().as_deref());
     let initial_theme = settings.theme;
-    let shortcut = Arc::new(RwLock::new(settings.toggle_mode));
+    let keymap = Arc::new(RwLock::new(settings.keymap));
     #[cfg(debug_assertions)]
     let initial_theme = apply_preview_mode(initial_theme);
 
@@ -241,9 +241,9 @@ pub(crate) fn run() {
     #[cfg(not(debug_assertions))]
     let previewing = false;
     if !previewing {
-        input::start_listener(backend, sender.clone(), Arc::clone(&shortcut));
+        input::start_listener(backend, sender.clone(), Arc::clone(&keymap));
     }
-    let _theme_monitor = theme::start_listener(sender, shortcut);
+    let _theme_monitor = theme::start_listener(sender, keymap);
 
     let animation_running = Rc::new(Cell::new(false));
     let receiver_state = Rc::clone(&state);
@@ -287,6 +287,10 @@ pub(crate) fn run() {
                     receiver_window.resize(WIDTH, height);
                 }
                 receiver_area.queue_draw();
+            }
+            UiMessage::Quit => {
+                gtk::main_quit();
+                return ControlFlow::Break;
             }
         }
         ControlFlow::Continue
