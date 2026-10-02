@@ -1,4 +1,4 @@
-use crate::model::{KeyMessage, Modifiers, Shortcut, UiMessage};
+use crate::model::{KeyMessage, Keymap, Modifiers, UiMessage};
 use crate::theme;
 use gtk::glib;
 use rdev::{listen, EventType, Key};
@@ -131,17 +131,17 @@ fn modifier_key(key: Key) -> Option<(u8, &'static str)> {
 
 struct Processor {
     sender: glib::Sender<UiMessage>,
-    shortcut: Arc<RwLock<Shortcut>>,
+    keymap: Arc<RwLock<Keymap>>,
     toggle_latched: bool,
     held: u8,
     chord_complete: bool,
 }
 
 impl Processor {
-    fn new(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) -> Self {
+    fn new(sender: glib::Sender<UiMessage>, keymap: Arc<RwLock<Keymap>>) -> Self {
         Self {
             sender,
-            shortcut,
+            keymap,
             toggle_latched: false,
             held: 0,
             chord_complete: false,
@@ -165,9 +165,9 @@ impl Processor {
             self.chord_complete = false;
         }
         if self
-            .shortcut
+            .keymap
             .read()
-            .is_ok_and(|active| !active.modifier_held(modifiers))
+            .is_ok_and(|active| !active.toggle_mode.modifier_held(modifiers))
         {
             self.toggle_latched = false;
         }
@@ -179,26 +179,30 @@ impl Processor {
             self.send_held_modifiers(held);
         }
         self.held = held;
-        let toggle = self
-            .shortcut
-            .read()
-            .is_ok_and(|active| active.matches(key, modifiers(held)));
+        let (toggle, quit) = self.keymap.read().map_or((false, false), |active| {
+            (
+                active.toggle_mode.matches(key, modifiers(held)),
+                active.quit.matches(key, modifiers(held)),
+            )
+        });
+        self.send_key(key);
+        self.chord_complete = held != 0;
+        if quit {
+            let _ = self.sender.send(UiMessage::Quit);
+            return;
+        }
         if toggle && !self.toggle_latched {
             self.toggle_latched = true;
             if let Err(error) = theme::toggle_mode() {
                 eprintln!("Could not toggle KeyRC mode: {error}");
             }
         }
-        self.send_key(key);
-        self.chord_complete = held != 0;
     }
 
     fn release_key(&mut self, key: &str) {
-        if self
-            .shortcut
-            .read()
-            .is_ok_and(|active| !active.has_modifiers() && active.key.eq_ignore_ascii_case(key))
-        {
+        if self.keymap.read().is_ok_and(|active| {
+            !active.toggle_mode.has_modifiers() && active.toggle_mode.key.eq_ignore_ascii_case(key)
+        }) {
             self.toggle_latched = false;
         }
     }
@@ -221,13 +225,13 @@ impl Processor {
     }
 }
 
-pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLock<Shortcut>>) {
+pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, keymap: Arc<RwLock<Keymap>>) {
     thread::Builder::new()
         .name("keyrc-input".into())
         .stack_size(256 * 1024)
         .spawn(move || {
             let mut held = 0_u8;
-            let mut processor = Processor::new(sender, shortcut);
+            let mut processor = Processor::new(sender, keymap);
             listen(move |event| match event.event_type {
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {
@@ -264,7 +268,7 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    fn recorded_keys(run: impl FnOnce(&mut Processor)) -> Vec<&'static str> {
+    fn recorded_events(run: impl FnOnce(&mut Processor)) -> Vec<&'static str> {
         let context = glib::MainContext::new();
         let _guard = context.acquire().expect("test main context is available");
         #[allow(deprecated)]
@@ -272,13 +276,15 @@ mod tests {
         let keys = Rc::new(RefCell::new(Vec::new()));
         let received = Rc::clone(&keys);
         receiver.attach(Some(&context), move |message| {
-            if let UiMessage::Key(message) = message {
-                received.borrow_mut().push(message.key);
+            match message {
+                UiMessage::Key(message) => received.borrow_mut().push(message.key),
+                UiMessage::Quit => received.borrow_mut().push("Quit"),
+                UiMessage::Modifiers(_) | UiMessage::Theme(_) => {}
             }
             ControlFlow::Continue
         });
 
-        let mut processor = Processor::new(sender, Arc::new(RwLock::new(Shortcut::default())));
+        let mut processor = Processor::new(sender, Arc::new(RwLock::new(Keymap::default())));
         run(&mut processor);
         while context.pending() {
             context.iteration(false);
@@ -289,7 +295,7 @@ mod tests {
 
     #[test]
     fn initial_combination_does_not_duplicate_modifiers() {
-        let keys = recorded_keys(|processor| {
+        let keys = recorded_events(|processor| {
             processor.press_modifier("Ctrl", CTRL_LEFT);
             processor.press_modifier("Alt", CTRL_LEFT | ALT_LEFT);
             processor.press_key("X", CTRL_LEFT | ALT_LEFT);
@@ -299,12 +305,22 @@ mod tests {
 
     #[test]
     fn held_modifiers_are_repeated_for_the_next_combination() {
-        let keys = recorded_keys(|processor| {
+        let keys = recorded_events(|processor| {
             processor.press_modifier("Super", SUPER_LEFT);
             processor.press_key("Tab", SUPER_LEFT);
             processor.release_key("Tab");
             processor.press_key("1", SUPER_LEFT);
         });
         assert_eq!(keys, ["Super", "Tab", "Super", "1"]);
+    }
+
+    #[test]
+    fn quit_shortcut_sends_quit_message() {
+        let events = recorded_events(|processor| {
+            processor.press_modifier("Ctrl", CTRL_LEFT);
+            processor.press_modifier("Alt", CTRL_LEFT | ALT_LEFT);
+            processor.press_key("Q", CTRL_LEFT | ALT_LEFT);
+        });
+        assert_eq!(events, ["Ctrl", "Alt", "Q", "Quit"]);
     }
 }

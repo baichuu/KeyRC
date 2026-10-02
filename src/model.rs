@@ -120,6 +120,28 @@ pub(crate) struct Shortcut {
     pub(crate) key: String,
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct Keymap {
+    pub(crate) toggle_mode: Shortcut,
+    pub(crate) quit: Shortcut,
+}
+
+impl Default for Keymap {
+    fn default() -> Self {
+        Self {
+            toggle_mode: Shortcut::default(),
+            quit: Shortcut {
+                modifiers: Modifiers {
+                    ctrl: true,
+                    alt: true,
+                    ..Modifiers::default()
+                },
+                key: "Q".into(),
+            },
+        }
+    }
+}
+
 impl Default for Shortcut {
     fn default() -> Self {
         Self {
@@ -231,6 +253,7 @@ pub(crate) enum UiMessage {
     Key(KeyMessage),
     Modifiers(Modifiers),
     Theme(Theme),
+    Quit,
 }
 
 #[cfg(test)]
