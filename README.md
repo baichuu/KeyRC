@@ -113,3 +113,7 @@ workflow can also be run manually for an existing tag.
 ## License
 
 KeyRC is available under the [MIT License](LICENSE).
+
+## TODO 
+
+- [ ] Add keymap to quit KeyRC
