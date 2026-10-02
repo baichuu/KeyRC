@@ -1,6 +1,6 @@
 [package]
 name = "keyrc"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight native GTK keystroke overlay"
 authors = ["baiyuechu"]
 edition = "2021"
