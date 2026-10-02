@@ -1,5 +1,5 @@
 use crate::icons::{draw as draw_icon, Icons, ModifierIcon, SpecialIcon};
-use crate::keys::display_text;
+use crate::keys::{display_text, is_function_key};
 use crate::model::{
     AppState, Color, DisplayMode, StoredKey, KEY_HEIGHT, MAX_DISPLAY_UNITS, MODIFIER_HEIGHT,
     MODIFIER_Y, WIDTH,
@@ -167,7 +167,12 @@ fn draw_key_token(
     context.translate(center_x, center_y);
     context.scale(0.92 + 0.08 * eased, 0.92 + 0.08 * eased);
     context.translate(-center_x, -center_y);
-    state.theme.key_text.with_alpha(eased).set(context);
+    let key_color = if is_function_key(key.key) {
+        state.theme.active_fg
+    } else {
+        state.theme.key_text
+    }
+    .with_alpha(eased);
     let mut cursor = x;
     if state.theme.mode == DisplayMode::KeysOnly {
         for (active, icon) in [
@@ -198,11 +203,12 @@ fn draw_key_token(
             cursor,
             center_y,
             state.theme.mode == DisplayMode::KeysOnly,
-            state.theme.key_text.with_alpha(eased),
+            key_color,
         );
     } else {
         let size = 36.0;
         let text = display_text(key.key, state.caps_lock);
+        key_color.set(context);
         draw_centered_text(
             context,
             &text,
