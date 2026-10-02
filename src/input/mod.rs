@@ -40,6 +40,8 @@ pub(crate) struct Processor {
     sender: glib::Sender<UiMessage>,
     shortcut: Arc<RwLock<Shortcut>>,
     toggle_latched: bool,
+    held: u8,
+    chord_complete: bool,
 }
 
 impl Processor {
@@ -48,16 +50,27 @@ impl Processor {
             sender,
             shortcut,
             toggle_latched: false,
+            held: 0,
+            chord_complete: false,
         }
     }
 
     pub(crate) fn press_modifier(&mut self, key: &'static str, held: u8) {
+        if self.chord_complete {
+            self.send_held_modifiers(self.held);
+            self.chord_complete = false;
+        }
+        self.held = held;
         let _ = self.sender.send(UiMessage::Modifiers(modifiers(held)));
-        let _ = self.sender.send(UiMessage::Key(KeyMessage { key }));
+        self.send_key(key);
     }
 
     pub(crate) fn release_modifier(&mut self, held: u8) {
         let modifiers = modifiers(held);
+        self.held = held;
+        if held == 0 {
+            self.chord_complete = false;
+        }
         if self
             .shortcut
             .read()
@@ -69,6 +82,10 @@ impl Processor {
     }
 
     pub(crate) fn press_key(&mut self, key: &'static str, held: u8) {
+        if self.chord_complete && held != 0 {
+            self.send_held_modifiers(held);
+        }
+        self.held = held;
         let toggle = self
             .shortcut
             .read()
@@ -79,7 +96,8 @@ impl Processor {
                 eprintln!("Could not toggle KeyRC mode: {error}");
             }
         }
-        let _ = self.sender.send(UiMessage::Key(KeyMessage { key }));
+        self.send_key(key);
+        self.chord_complete = held != 0;
     }
 
     pub(crate) fn release_key(&mut self, key: &str) {
@@ -90,5 +108,74 @@ impl Processor {
         {
             self.toggle_latched = false;
         }
+    }
+
+    fn send_held_modifiers(&self, held: u8) {
+        for (mask, key) in [
+            (SHIFT_LEFT | SHIFT_RIGHT, "Shift"),
+            (CTRL_LEFT | CTRL_RIGHT, "Ctrl"),
+            (ALT_LEFT | ALT_RIGHT, "Alt"),
+            (SUPER_LEFT | SUPER_RIGHT, "Super"),
+        ] {
+            if held & mask != 0 {
+                self.send_key(key);
+            }
+        }
+    }
+
+    fn send_key(&self, key: &'static str) {
+        let _ = self.sender.send(UiMessage::Key(KeyMessage { key }));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk::glib::ControlFlow;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    fn recorded_keys(run: impl FnOnce(&mut Processor)) -> Vec<&'static str> {
+        let context = glib::MainContext::new();
+        let _guard = context.acquire().expect("test main context is available");
+        #[allow(deprecated)]
+        let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
+        let keys = Rc::new(RefCell::new(Vec::new()));
+        let received = Rc::clone(&keys);
+        receiver.attach(Some(&context), move |message| {
+            if let UiMessage::Key(message) = message {
+                received.borrow_mut().push(message.key);
+            }
+            ControlFlow::Continue
+        });
+
+        let mut processor = Processor::new(sender, Arc::new(RwLock::new(Shortcut::default())));
+        run(&mut processor);
+        while context.pending() {
+            context.iteration(false);
+        }
+        let recorded = keys.borrow().clone();
+        recorded
+    }
+
+    #[test]
+    fn initial_combination_does_not_duplicate_modifiers() {
+        let keys = recorded_keys(|processor| {
+            processor.press_modifier("Ctrl", CTRL_LEFT);
+            processor.press_modifier("Alt", CTRL_LEFT | ALT_LEFT);
+            processor.press_key("X", CTRL_LEFT | ALT_LEFT);
+        });
+        assert_eq!(keys, ["Ctrl", "Alt", "X"]);
+    }
+
+    #[test]
+    fn held_modifiers_are_repeated_for_the_next_combination() {
+        let keys = recorded_keys(|processor| {
+            processor.press_modifier("Super", SUPER_LEFT);
+            processor.press_key("Tab", SUPER_LEFT);
+            processor.release_key("Tab");
+            processor.press_key("1", SUPER_LEFT);
+        });
+        assert_eq!(keys, ["Super", "Tab", "Super", "1"]);
     }
 }

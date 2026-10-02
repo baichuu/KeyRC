@@ -1,4 +1,3 @@
-use crate::keys::is_alias;
 use gtk::cairo::Context;
 use std::collections::VecDeque;
 use std::time::Instant;
@@ -220,14 +219,6 @@ impl AppState {
         if message.key == "CapsLock" {
             self.caps_lock = !self.caps_lock;
         }
-        let reset = is_alias(message.key)
-            || self
-                .history
-                .front()
-                .is_some_and(|previous| is_alias(previous.key));
-        if reset {
-            self.history.clear();
-        }
         self.history.push_front(StoredKey {
             key: message.key,
             created: Instant::now(),
@@ -259,5 +250,14 @@ mod tests {
             let history: Vec<_> = state.history.iter().rev().map(|key| key.key).collect();
             assert_eq!(history, ["Ctrl", "Alt", "M"]);
         }
+    }
+
+    #[test]
+    fn special_keys_keep_their_combination_modifiers() {
+        let mut state = AppState::new(Theme::default());
+        state.push_key(KeyMessage { key: "Super" });
+        state.push_key(KeyMessage { key: "Escape" });
+        let history: Vec<_> = state.history.iter().rev().map(|key| key.key).collect();
+        assert_eq!(history, ["Super", "Escape"]);
     }
 }

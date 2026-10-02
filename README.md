@@ -35,8 +35,11 @@ missing colors use black/white defaults.
 
 `general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
-Modifier keypresses appear once in the history in both modes. Shift combinations
-keep the letter label lowercase; Caps Lock makes letters uppercase.
+Modifiers appear once within each combination in both modes. When a modifier
+stays held for another key, KeyRC repeats it so each combination remains clear;
+for example, holding `Super` across `Tab` then `1` shows
+`Super Tab Super 1`. Shift combinations keep the letter label lowercase; Caps
+Lock makes letters uppercase.
 
 Missing or malformed TOML uses the default colors and `full` mode. Unknown mode
 values use `full`. KeyRC reads only its own configuration file.

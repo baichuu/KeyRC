@@ -8,7 +8,7 @@ const DELETE: &str = r#"<g fill="none" stroke="currentColor" stroke-linecap="rou
 const ENTER: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 5v7a4 4 0 0 1-4 4H5m4-4-4 4 4 4"/>"#;
 const TAB: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 5v14M4 12h12m-4-4 4 4-4 4"/>"#;
 const SPACE: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8v8h14V8"/>"#;
-const ESCAPE: &str = r#"<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M9.5 4.4A8 8 0 1 1 4.4 9.5"/><path d="M4 4h6M4 4v6m0-6 6 6"/></g>"#;
+const ESCAPE: &str = r#"<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 4a8 8 0 1 1-8 8"/><path d="M4 4h5M4 4v5m0-5 8 8"/></g>"#;
 const LEFT: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 12h4m3 0h3m-6-5-5 5 5 5"/>"#;
 const RIGHT: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 12h-4m-3 0H9m6-5 5 5-5 5"/>"#;
 const UP: &str = r#"<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 19v-4m0-3V9M7 9l5-5 5 5"/>"#;

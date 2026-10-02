@@ -12,10 +12,6 @@ pub(crate) fn alias(key: &str) -> &str {
     }
 }
 
-pub(crate) fn is_alias(key: &str) -> bool {
-    alias(key) != key
-}
-
 pub(crate) fn is_function_key(key: &str) -> bool {
     matches!(
         key,
