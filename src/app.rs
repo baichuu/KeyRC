@@ -2,7 +2,7 @@ use crate::icons::Icons;
 use crate::input;
 use crate::model::{AppState, UiMessage, WIDTH};
 #[cfg(debug_assertions)]
-use crate::model::{DisplayMode, KeyMessage, Modifiers};
+use crate::model::{DisplayMode, KeyMessage};
 use crate::{position, render, theme};
 use gtk::gdk;
 use gtk::glib::{self, ControlFlow};
@@ -101,6 +101,16 @@ fn apply_preview_keys(mut state: AppState) -> AppState {
         for specification in keys.split(',') {
             let mut parts = specification.split('+').collect::<Vec<_>>();
             let raw_key = parts.pop().unwrap_or_default();
+            for modifier in parts {
+                let key = match modifier {
+                    "Shift" => "Shift",
+                    "Ctrl" => "Ctrl",
+                    "Alt" => "Alt",
+                    "Super" => "Super",
+                    _ => continue,
+                };
+                state.push_key(KeyMessage { key });
+            }
             let key = match raw_key {
                 "Right" => "Right",
                 "Left" => "Left",
@@ -109,13 +119,7 @@ fn apply_preview_keys(mut state: AppState) -> AppState {
                 "Enter" => "Enter",
                 other => Box::leak(other.to_owned().into_boxed_str()),
             };
-            let modifiers = Modifiers {
-                shift: parts.contains(&"Shift"),
-                ctrl: parts.contains(&"Ctrl"),
-                alt: parts.contains(&"Alt"),
-                super_key: parts.contains(&"Super"),
-            };
-            state.push_key(KeyMessage { key, modifiers });
+            state.push_key(KeyMessage { key });
         }
         for key in &mut state.history {
             key.created = Instant::now() - Duration::from_secs(1);

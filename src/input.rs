@@ -140,13 +140,9 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLo
                 EventType::KeyPress(key) => {
                     if let Some((bit, key)) = modifier_key(key) {
                         if held & bit == 0 {
-                            let chord = modifiers(held);
                             held |= bit;
                             let _ = sender.send(UiMessage::Modifiers(modifiers(held)));
-                            let _ = sender.send(UiMessage::Key(KeyMessage {
-                                key,
-                                modifiers: chord,
-                            }));
+                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
                         }
                     } else {
                         let key = key_name(key);
@@ -160,10 +156,7 @@ pub(crate) fn start_listener(sender: glib::Sender<UiMessage>, shortcut: Arc<RwLo
                                     eprintln!("Could not toggle KeyRC mode: {error}");
                                 }
                             }
-                            let _ = sender.send(UiMessage::Key(KeyMessage {
-                                key,
-                                modifiers: modifiers(held),
-                            }));
+                            let _ = sender.send(UiMessage::Key(KeyMessage { key }));
                         }
                     }
                 }

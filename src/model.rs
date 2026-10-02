@@ -191,13 +191,11 @@ impl Modifiers {
 #[derive(Clone, Copy)]
 pub(crate) struct KeyMessage {
     pub(crate) key: &'static str,
-    pub(crate) modifiers: Modifiers,
 }
 
 #[derive(Clone)]
 pub(crate) struct StoredKey {
     pub(crate) key: &'static str,
-    pub(crate) modifiers: Modifiers,
     pub(crate) created: Instant,
 }
 
@@ -232,7 +230,6 @@ impl AppState {
         }
         self.history.push_front(StoredKey {
             key: message.key,
-            modifiers: message.modifiers,
             created: Instant::now(),
         });
         self.history.truncate(MAX_HISTORY);

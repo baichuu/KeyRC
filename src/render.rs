@@ -92,24 +92,17 @@ fn draw_centered_text(context: &Context, text: &str, center_x: f64, center_y: f6
 }
 
 fn key_width(context: &Context, key: &StoredKey, mode: DisplayMode, caps_lock: bool) -> f64 {
-    let modifier_width = if mode == DisplayMode::KeysOnly {
-        let count = key.modifiers.units();
-        count as f64 * 40.0
-    } else {
-        0.0
-    };
-    modifier_width
-        + if SpecialIcon::from_key(key.key).is_some() {
-            if mode == DisplayMode::KeysOnly {
-                44.0
-            } else {
-                36.0
-            }
-        } else if ModifierIcon::from_key(key.key).is_some() {
-            36.0
+    if SpecialIcon::from_key(key.key).is_some() {
+        if mode == DisplayMode::KeysOnly {
+            44.0
         } else {
-            text_width(context, &display_text(key.key, caps_lock), 36.0)
+            36.0
         }
+    } else if ModifierIcon::from_key(key.key).is_some() {
+        36.0
+    } else {
+        text_width(context, &display_text(key.key, caps_lock), 36.0)
+    }
 }
 
 fn draw_special_key(
@@ -175,48 +168,18 @@ fn draw_key_token(
         state.theme.key_text
     }
     .with_alpha(eased);
-    let mut cursor = x;
-    if state.theme.mode == DisplayMode::KeysOnly {
-        for (active, icon) in [
-            (key.modifiers.ctrl, ModifierIcon::Ctrl),
-            (key.modifiers.alt, ModifierIcon::Alt),
-            (key.modifiers.shift, ModifierIcon::Shift),
-            (key.modifiers.super_key, ModifierIcon::Super),
-        ] {
-            if active {
-                draw_modifier(
-                    context,
-                    icons,
-                    icon,
-                    cursor + 18.0,
-                    center_y,
-                    true,
-                    state.theme.key_text.with_alpha(eased),
-                );
-                cursor += 40.0;
-            }
-        }
-    }
     if SpecialIcon::from_key(key.key).is_some() {
         draw_special_key(
             context,
             icons,
             key.key,
-            cursor,
+            x,
             center_y,
             state.theme.mode == DisplayMode::KeysOnly,
             key_color,
         );
     } else if let Some(icon) = ModifierIcon::from_key(key.key) {
-        draw_modifier(
-            context,
-            icons,
-            icon,
-            cursor + 18.0,
-            center_y,
-            true,
-            key_color,
-        );
+        draw_modifier(context, icons, icon, x + 18.0, center_y, true, key_color);
     } else {
         let size = 36.0;
         let text = display_text(key.key, state.caps_lock);
@@ -224,7 +187,7 @@ fn draw_key_token(
         draw_centered_text(
             context,
             &text,
-            cursor + text_width(context, &text, size) / 2.0,
+            x + text_width(context, &text, size) / 2.0,
             center_y,
             size,
         );
@@ -298,18 +261,7 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
             3
         },
     );
-    let mut shown = Vec::new();
-    let mut units = 0;
-    for key in &state.history {
-        shown.push(key);
-        units += 1;
-        if state.theme.mode == DisplayMode::KeysOnly {
-            units += key.modifiers.units();
-        }
-        if units >= MAX_DISPLAY_UNITS {
-            break;
-        }
-    }
+    let mut shown: Vec<_> = state.history.iter().take(MAX_DISPLAY_UNITS).collect();
     shown.reverse();
     let widths: Vec<f64> = shown
         .iter()
