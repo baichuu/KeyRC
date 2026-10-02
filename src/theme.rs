@@ -1,9 +1,10 @@
 use crate::model::{Color, DisplayMode, Theme, UiMessage};
+use gtk::gio::{self, prelude::*};
 use gtk::glib;
+use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::thread;
-use std::time::{Duration, SystemTime};
+use std::rc::Rc;
 
 pub(crate) fn path() -> Option<PathBuf> {
     std::env::var_os("HOME")
@@ -80,32 +81,28 @@ pub(crate) fn toggle_mode() -> Result<(), String> {
     write_mode(&path, current.mode.toggled())
 }
 
-fn revision(path: Option<&Path>) -> Option<(SystemTime, u64)> {
-    let metadata = path.and_then(|path| fs::metadata(path).ok())?;
-    Some((metadata.modified().ok()?, metadata.len()))
-}
+pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) -> Option<gio::FileMonitor> {
+    let path = path()?;
+    let directory = path.parent()?;
+    fs::create_dir_all(directory).ok()?;
+    let monitor = gio::File::for_path(directory)
+        .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
+        .ok()?;
+    monitor.set_rate_limit(50);
 
-pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
-    thread::spawn(move || {
-        let path = path();
-        let mut revision = revision(path.as_deref());
-        let mut current = read(path.as_deref());
-        loop {
-            thread::sleep(Duration::from_millis(250));
-            let next_revision = self::revision(path.as_deref());
-            if next_revision == revision {
-                continue;
-            }
-            revision = next_revision;
-            let next = read(path.as_deref());
-            if next != current {
-                current = next.clone();
-                if sender.send(UiMessage::Theme(next)).is_err() {
-                    return;
-                }
-            }
+    let current = Rc::new(RefCell::new(read(Some(&path))));
+    monitor.connect_changed(move |_, changed, other, _| {
+        let is_config = |file: &gio::File| file.path().as_deref() == Some(path.as_path());
+        if !is_config(changed) && !other.is_some_and(is_config) {
+            return;
+        }
+        let next = read(Some(&path));
+        if next != *current.borrow() {
+            *current.borrow_mut() = next.clone();
+            let _ = sender.send(UiMessage::Theme(next));
         }
     });
+    Some(monitor)
 }
 
 #[cfg(test)]

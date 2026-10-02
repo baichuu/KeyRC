@@ -1,8 +1,9 @@
+use gtk::glib::{self, ControlFlow};
+use std::cell::{Cell, RefCell};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Sender};
-use std::thread;
-use std::time::Duration;
+use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 pub(crate) fn path() -> Option<PathBuf> {
     std::env::var_os("XDG_CACHE_HOME")
@@ -43,19 +44,34 @@ fn save(path: &Path, position: (i32, i32)) -> std::io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn start_writer(path: PathBuf) -> Sender<(i32, i32)> {
-    let (sender, receiver) = mpsc::channel();
-    thread::spawn(move || {
-        while let Ok(mut position) = receiver.recv() {
-            while let Ok(next) = receiver.recv_timeout(Duration::from_millis(150)) {
-                position = next;
-            }
-            if let Err(error) = save(&path, position) {
-                eprintln!("Could not save KeyRC position: {error}");
-            }
+pub(crate) fn start_writer(path: PathBuf) -> impl Fn((i32, i32)) {
+    let pending = Rc::new(RefCell::new(None));
+    let scheduled = Rc::new(Cell::new(false));
+    move |position| {
+        *pending.borrow_mut() = Some((position, Instant::now()));
+        if scheduled.replace(true) {
+            return;
         }
-    });
-    sender
+        let path = path.clone();
+        let pending = Rc::clone(&pending);
+        let scheduled = Rc::clone(&scheduled);
+        glib::timeout_add_local(Duration::from_millis(50), move || {
+            let ready = pending
+                .borrow()
+                .as_ref()
+                .is_some_and(|(_, updated)| updated.elapsed() >= Duration::from_millis(150));
+            if !ready {
+                return ControlFlow::Continue;
+            }
+            if let Some((position, _)) = pending.borrow_mut().take() {
+                if let Err(error) = save(&path, position) {
+                    eprintln!("Could not save KeyRC position: {error}");
+                }
+            }
+            scheduled.set(false);
+            ControlFlow::Break
+        });
+    }
 }
 
 #[cfg(test)]

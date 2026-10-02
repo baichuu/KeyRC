@@ -167,11 +167,11 @@ pub(crate) fn run() {
 
     let position_ready = Rc::new(Cell::new(false));
     if let Some(path) = position_path {
-        let position_sender = position::start_writer(path);
+        let write_position = position::start_writer(path);
         let position_ready = Rc::clone(&position_ready);
         window.connect_configure_event(move |_, event| {
             if position_ready.get() {
-                let _ = position_sender.send(event.position());
+                write_position(event.position());
             }
             false
         });
@@ -186,7 +186,7 @@ pub(crate) fn run() {
     if !previewing {
         input::start_listener(sender.clone());
     }
-    theme::start_listener(sender);
+    let _theme_monitor = theme::start_listener(sender);
 
     let animation_running = Rc::new(Cell::new(false));
     let receiver_state = Rc::clone(&state);

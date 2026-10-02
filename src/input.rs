@@ -114,41 +114,45 @@ fn modifiers(held: u8) -> Modifiers {
 }
 
 pub(crate) fn start_listener(sender: glib::Sender<UiMessage>) {
-    thread::spawn(move || {
-        let mut held = 0_u8;
-        listen(move |event| match event.event_type {
-            EventType::KeyPress(key) => match key {
-                Key::ShiftLeft => held |= SHIFT_LEFT,
-                Key::ShiftRight => held |= SHIFT_RIGHT,
-                Key::ControlLeft => held |= CTRL_LEFT,
-                Key::ControlRight => held |= CTRL_RIGHT,
-                Key::Alt => held |= ALT_LEFT,
-                Key::AltGr => held |= ALT_RIGHT,
-                Key::MetaLeft => held |= SUPER_LEFT,
-                Key::MetaRight => held |= SUPER_RIGHT,
-                key => {
-                    let key = key_name(key);
-                    if !key.is_empty() {
-                        let _ = sender.send(UiMessage::Key(KeyMessage {
-                            key,
-                            modifiers: modifiers(held),
-                        }));
+    thread::Builder::new()
+        .name("keyrc-input".into())
+        .stack_size(256 * 1024)
+        .spawn(move || {
+            let mut held = 0_u8;
+            listen(move |event| match event.event_type {
+                EventType::KeyPress(key) => match key {
+                    Key::ShiftLeft => held |= SHIFT_LEFT,
+                    Key::ShiftRight => held |= SHIFT_RIGHT,
+                    Key::ControlLeft => held |= CTRL_LEFT,
+                    Key::ControlRight => held |= CTRL_RIGHT,
+                    Key::Alt => held |= ALT_LEFT,
+                    Key::AltGr => held |= ALT_RIGHT,
+                    Key::MetaLeft => held |= SUPER_LEFT,
+                    Key::MetaRight => held |= SUPER_RIGHT,
+                    key => {
+                        let key = key_name(key);
+                        if !key.is_empty() {
+                            let _ = sender.send(UiMessage::Key(KeyMessage {
+                                key,
+                                modifiers: modifiers(held),
+                            }));
+                        }
                     }
-                }
-            },
-            EventType::KeyRelease(key) => match key {
-                Key::ShiftLeft => held &= !SHIFT_LEFT,
-                Key::ShiftRight => held &= !SHIFT_RIGHT,
-                Key::ControlLeft => held &= !CTRL_LEFT,
-                Key::ControlRight => held &= !CTRL_RIGHT,
-                Key::Alt => held &= !ALT_LEFT,
-                Key::AltGr => held &= !ALT_RIGHT,
-                Key::MetaLeft => held &= !SUPER_LEFT,
-                Key::MetaRight => held &= !SUPER_RIGHT,
+                },
+                EventType::KeyRelease(key) => match key {
+                    Key::ShiftLeft => held &= !SHIFT_LEFT,
+                    Key::ShiftRight => held &= !SHIFT_RIGHT,
+                    Key::ControlLeft => held &= !CTRL_LEFT,
+                    Key::ControlRight => held &= !CTRL_RIGHT,
+                    Key::Alt => held &= !ALT_LEFT,
+                    Key::AltGr => held &= !ALT_RIGHT,
+                    Key::MetaLeft => held &= !SUPER_LEFT,
+                    Key::MetaRight => held &= !SUPER_RIGHT,
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            })
+            .expect("Could not listen to events");
         })
-        .expect("Could not listen to events");
-    });
+        .expect("Could not start input listener");
 }
