@@ -43,6 +43,7 @@ impl DisplayMode {
 #[derive(Clone, PartialEq)]
 pub(crate) struct Theme {
     pub(crate) mode: DisplayMode,
+    pub(crate) opacity: f64,
     pub(crate) active_bg: Color,
     pub(crate) active_fg: Color,
     pub(crate) key_text: Color,
@@ -54,6 +55,7 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             mode: DisplayMode::Full,
+            opacity: 1.0,
             active_bg: Color::rgb(0, 0, 0),
             active_fg: Color::rgb(255, 255, 255),
             key_text: Color::rgb(255, 255, 255),
