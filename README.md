@@ -9,12 +9,14 @@ It uses a single process and does not embed WebKit.
 
 ## Configuration
 
-KeyRC reads `~/.config/keyrc/config.toml`. Mode, keymap, and color changes apply
-live. The file has one mode, one toggle shortcut, and five colors:
+KeyRC reads `~/.config/keyrc/config.toml`. Mode, opacity, keymap, and color
+changes apply live. The file has one mode, one opacity value, two shortcuts,
+and five colors:
 
 ```toml
 [general]
 mode = "keys_only"
+opacity = 1.0
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"
@@ -40,6 +42,8 @@ missing colors use black/white defaults.
 
 `general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
+`general.opacity` controls the opacity of the entire popup from `0.0` to `1.0`
+and defaults to `1.0`. Opacity changes apply live.
 Modifiers appear once within each combination in both modes. When a modifier
 stays held for another key, KeyRC repeats it so each combination remains clear;
 for example, holding `Super` across `Tab` then `1` shows

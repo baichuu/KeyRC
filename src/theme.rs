@@ -26,19 +26,29 @@ fn palette_color(table: Option<&toml::Table>, key: &str) -> Option<Color> {
         .and_then(Color::parse)
 }
 
+fn opacity(table: Option<&toml::Table>) -> Option<f64> {
+    let value = table?.get("opacity")?;
+    let value = value
+        .as_float()
+        .or_else(|| value.as_integer().map(|value| value as f64))?;
+    (0.0..=1.0).contains(&value).then_some(value)
+}
+
 fn parse(contents: &str) -> Settings {
     let mut settings = Settings::default();
     let Ok(config) = toml::from_str::<toml::Table>(contents) else {
         return settings;
     };
-    let mode = config
-        .get("general")
-        .and_then(toml::Value::as_table)
+    let general = config.get("general").and_then(toml::Value::as_table);
+    let mode = general
         .and_then(|general| general.get("mode"))
         .or_else(|| config.get("mode"))
         .and_then(toml::Value::as_str);
     if mode == Some("keys_only") {
         settings.theme.mode = DisplayMode::KeysOnly;
+    }
+    if let Some(opacity) = opacity(general) {
+        settings.theme.opacity = opacity;
     }
     let colors = config.get("colors").and_then(toml::Value::as_table);
     for (key, target) in [
@@ -162,6 +172,7 @@ mod tests {
         let settings = parse(
             r##"[general]
 mode = "keys_only"
+opacity = 0.8
 
 [keymap]
 toggle_mode = "Super+Shift+K"
@@ -176,6 +187,7 @@ border = "#445566"
         );
         let theme = settings.theme;
         assert!(theme.mode == DisplayMode::KeysOnly);
+        assert_eq!(theme.opacity, 0.8);
         assert!(theme.active_bg == Color::rgb(0x11, 0x22, 0x33));
         assert_eq!(theme.active_fg.alpha, 0xdd as f64 / 255.0);
         assert!(theme.key_text == Color::rgb(255, 255, 255));
@@ -189,8 +201,17 @@ border = "#445566"
     #[test]
     fn uses_default_quit_shortcut_when_missing() {
         let settings = parse("");
+        assert_eq!(settings.theme.opacity, 1.0);
         assert_eq!(settings.keymap.quit.key, "Q");
         assert!(settings.keymap.quit.modifiers.ctrl);
         assert!(settings.keymap.quit.modifiers.alt);
+    }
+
+    #[test]
+    fn rejects_opacity_outside_zero_to_one() {
+        for value in ["-0.1", "1.1", "\"0.5\""] {
+            let settings = parse(&format!("[general]\nopacity = {value}\n"));
+            assert_eq!(settings.theme.opacity, 1.0);
+        }
     }
 }

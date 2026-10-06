@@ -248,6 +248,7 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     context.set_source_rgba(0.0, 0.0, 0.0, 0.0);
     let _ = context.paint();
     context.set_operator(Operator::Over);
+    context.push_group();
     fill_panel(
         context,
         state,
@@ -276,4 +277,6 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     if state.theme.mode == DisplayMode::Full {
         draw_modifier_row(context, icons, state);
     }
+    let _ = context.pop_group_to_source();
+    let _ = context.paint_with_alpha(state.theme.opacity);
 }
