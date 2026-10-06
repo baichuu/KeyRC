@@ -243,6 +243,20 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
     }
 }
 
+fn stroke_full_outline(context: &Context, state: &AppState) {
+    rounded_panel(
+        context,
+        0.5,
+        0.5,
+        f64::from(WIDTH) - 1.0,
+        f64::from(state.theme.mode.height()) - 1.0,
+        15,
+    );
+    state.theme.border.set(context);
+    context.set_line_width(1.0);
+    let _ = context.stroke();
+}
+
 pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     context.set_operator(Operator::Source);
     context.set_source_rgba(0.0, 0.0, 0.0, 0.0);
@@ -288,6 +302,7 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     }
     if state.theme.mode == DisplayMode::Full {
         draw_modifier_row(context, icons, state);
+        stroke_full_outline(context, state);
     }
     let _ = context.pop_group_to_source();
     let _ = context.paint_with_alpha(state.theme.opacity);
