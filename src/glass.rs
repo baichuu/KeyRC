@@ -1,5 +1,5 @@
 use gtk::cairo::{Format, ImageSurface};
-use std::ffi::{c_int, c_uint, c_void};
+use std::ffi::{c_int, c_uchar, c_uint, c_ulong, c_void};
 use std::mem;
 use std::ptr;
 use std::slice;
@@ -48,6 +48,97 @@ const REFRACTION_INDEX: f32 = 1.7;
 const REFRACTION_SCALE: f32 = 65.0;
 const CHROMA_STRENGTH: f32 = 0.30;
 const CORNER_RADIUS: f32 = 24.0;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DesktopContext {
+    active_window: c_ulong,
+    workspace: c_ulong,
+}
+
+pub(crate) struct DesktopMonitor {
+    display: *mut xlib::Display,
+    root: xlib::Window,
+    active_window_atom: xlib::Atom,
+    workspace_atom: xlib::Atom,
+}
+
+impl DesktopMonitor {
+    pub(crate) fn new() -> Option<Self> {
+        unsafe {
+            let display = xlib::XOpenDisplay(ptr::null());
+            if display.is_null() {
+                return None;
+            }
+            let screen = xlib::XDefaultScreen(display);
+            Some(Self {
+                display,
+                root: xlib::XRootWindow(display, screen),
+                active_window_atom: xlib::XInternAtom(
+                    display,
+                    c"_NET_ACTIVE_WINDOW".as_ptr(),
+                    xlib::False,
+                ),
+                workspace_atom: xlib::XInternAtom(
+                    display,
+                    c"_NET_CURRENT_DESKTOP".as_ptr(),
+                    xlib::False,
+                ),
+            })
+        }
+    }
+
+    pub(crate) fn context(&self) -> Option<DesktopContext> {
+        Some(DesktopContext {
+            active_window: self.property(self.active_window_atom)?,
+            workspace: self.property(self.workspace_atom).unwrap_or(0),
+        })
+    }
+
+    fn property(&self, property: xlib::Atom) -> Option<c_ulong> {
+        unsafe {
+            let mut actual_type = 0;
+            let mut actual_format = 0;
+            let mut item_count = 0;
+            let mut bytes_after = 0;
+            let mut data: *mut c_uchar = ptr::null_mut();
+            let status = xlib::XGetWindowProperty(
+                self.display,
+                self.root,
+                property,
+                0,
+                1,
+                xlib::False,
+                xlib::AnyPropertyType as c_ulong,
+                &mut actual_type,
+                &mut actual_format,
+                &mut item_count,
+                &mut bytes_after,
+                &mut data,
+            );
+            if status != xlib::Success as c_int
+                || actual_format != 32
+                || item_count != 1
+                || data.is_null()
+            {
+                if !data.is_null() {
+                    xlib::XFree(data.cast());
+                }
+                return None;
+            }
+            let value = *data.cast::<c_ulong>();
+            xlib::XFree(data.cast());
+            Some(value)
+        }
+    }
+}
+
+impl Drop for DesktopMonitor {
+    fn drop(&mut self) {
+        unsafe {
+            xlib::XCloseDisplay(self.display);
+        }
+    }
+}
 
 #[derive(Clone, Copy, Default)]
 struct Pixel {

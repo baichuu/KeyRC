@@ -52,8 +52,10 @@ popup. Switching applications, moving windows, and changing their content
 updates the glass without capturing KeyRC itself. It stops with KeyRC. If
 another compositor already owns the X11 compositor selection, KeyRC leaves it
 untouched and uses the built-in snapshot renderer as a fallback. An opacity
-near `0.32` matches the dark-glass preset used by the reference design. Both
-settings apply live.
+near `0.32` matches the dark-glass preset used by the reference design. The
+fallback re-captures after the active application or workspace changes, so an
+Alt+Tab never keeps the previous application's backdrop. Both settings apply
+live.
 Modifiers appear once within each combination in both modes. When a modifier
 stays held for another key, KeyRC repeats it so each combination remains clear;
 for example, holding `Super` across `Tab` then `1` shows

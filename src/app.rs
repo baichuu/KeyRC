@@ -3,7 +3,10 @@ use crate::input;
 use crate::model::{AppState, UiMessage, WIDTH};
 #[cfg(debug_assertions)]
 use crate::model::{DisplayMode, KeyMessage};
-use crate::{glass::DesktopSnapshot, native_compositor, position, render, theme};
+use crate::{
+    glass::{DesktopMonitor, DesktopSnapshot},
+    native_compositor, position, render, theme,
+};
 use gtk::gdk;
 use gtk::glib::{self, ControlFlow};
 use gtk::prelude::*;
@@ -112,6 +115,39 @@ fn refresh_glass_backdrop(
     }
     state.glass_scale = scale;
     area.queue_draw();
+}
+
+fn recapture_glass_backdrop(
+    window: &gtk::Window,
+    desktop: &RefCell<Option<DesktopSnapshot>>,
+    state: &RefCell<AppState>,
+    area: &gtk::DrawingArea,
+    position: (i32, i32),
+) {
+    {
+        let state = state.borrow();
+        if !state.theme.liquid_glass || state.native_glass {
+            return;
+        }
+    }
+
+    window.hide();
+    if let Some(display) = gdk::Display::default() {
+        display.sync();
+    }
+    *desktop.borrow_mut() = DesktopSnapshot::capture();
+    window.move_(position.0, position.1);
+    window.show_all();
+    window.set_keep_above(true);
+    window.set_skip_taskbar_hint(true);
+    window.set_skip_pager_hint(true);
+    window.stick();
+    window.set_accept_focus(false);
+    if let Some(native) = window.window() {
+        native.stick();
+        native.set_accept_focus(false);
+    }
+    refresh_glass_backdrop(desktop, state, area, position);
 }
 
 #[cfg(debug_assertions)]
@@ -421,5 +457,48 @@ pub(crate) fn run() {
     glib::timeout_add_local_once(Duration::from_millis(500), move || {
         position_ready.set(true);
     });
+
+    if let Some(monitor) = DesktopMonitor::new() {
+        let monitor = Rc::new(monitor);
+        let rendered_context = Rc::new(Cell::new(monitor.context()));
+        let refresh_scheduled = Rc::new(Cell::new(false));
+        let monitor_window = window.clone();
+        let monitor_area = drawing_area.clone();
+        let monitor_state = Rc::clone(&state);
+        let monitor_desktop = Rc::clone(&desktop);
+        let monitor_position = Rc::clone(&current_position);
+        glib::timeout_add_local(Duration::from_millis(100), move || {
+            let context = monitor.context();
+            let fallback_active = {
+                let state = monitor_state.borrow();
+                state.theme.liquid_glass && !state.native_glass
+            };
+            if !fallback_active {
+                rendered_context.set(context);
+                return ControlFlow::Continue;
+            }
+            if context != rendered_context.get() && !refresh_scheduled.replace(true) {
+                let monitor = Rc::clone(&monitor);
+                let rendered_context = Rc::clone(&rendered_context);
+                let refresh_scheduled = Rc::clone(&refresh_scheduled);
+                let window = monitor_window.clone();
+                let area = monitor_area.clone();
+                let state = Rc::clone(&monitor_state);
+                let desktop = Rc::clone(&monitor_desktop);
+                let position = Rc::clone(&monitor_position);
+                glib::timeout_add_local_once(Duration::from_millis(60), move || {
+                    let context = monitor.context();
+                    if context != rendered_context.get() {
+                        let latest = window.position();
+                        position.set(latest);
+                        recapture_glass_backdrop(&window, &desktop, &state, &area, latest);
+                        rendered_context.set(context);
+                    }
+                    refresh_scheduled.set(false);
+                });
+            }
+            ControlFlow::Continue
+        });
+    }
     gtk::main();
 }
