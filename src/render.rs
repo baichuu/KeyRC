@@ -111,9 +111,27 @@ fn stroke_panel(
     corners: u8,
 ) {
     rounded_panel(context, x, y, width, height, corners);
-    state.theme.border.set(context);
+    set_panel_border(context, state);
     context.set_line_width(1.0);
     let _ = context.stroke();
+}
+
+fn set_panel_border(context: &Context, state: &AppState) {
+    if state.theme.liquid_glass {
+        let tint_luminance = state.theme.background.red * 0.2126
+            + state.theme.background.green * 0.7152
+            + state.theme.background.blue * 0.0722;
+        let tint_amount = 0.32 * state.theme.opacity;
+        let displayed_luminance =
+            state.glass_luminance * (1.0 - tint_amount) + tint_luminance * tint_amount;
+        if displayed_luminance >= 0.55 {
+            Color::rgb(0, 0, 0).with_alpha(0.28).set(context);
+        } else {
+            Color::rgb(255, 250, 240).with_alpha(0.20).set(context);
+        }
+    } else {
+        state.theme.border.set(context);
+    }
 }
 
 fn text_layout(context: &Context, text: &str, size: f64) -> Layout {
@@ -283,7 +301,7 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
             let _ = context.fill_preserve();
             context.restore().ok();
         }
-        state.theme.border.set(context);
+        set_panel_border(context, state);
         context.set_line_width(1.0);
         let _ = context.stroke();
         let color = if active {
@@ -312,7 +330,7 @@ fn stroke_full_outline(context: &Context, state: &AppState) {
         f64::from(state.theme.mode.height()) - 1.0,
         15,
     );
-    state.theme.border.set(context);
+    set_panel_border(context, state);
     context.set_line_width(1.0);
     let _ = context.stroke();
 }

@@ -144,7 +144,7 @@ impl DesktopSnapshot {
         width: i32,
         height: i32,
         scale: i32,
-    ) -> Option<ImageSurface> {
+    ) -> Option<(ImageSurface, f64)> {
         let scale = scale.max(1);
         let pixel_width = width * scale;
         let pixel_height = height * scale;
@@ -166,6 +166,7 @@ impl DesktopSnapshot {
         );
         let stride = Format::ARgb32.stride_for_width(pixel_width as u32).ok()?;
         let mut output = vec![0_u8; (stride * pixel_height) as usize];
+        let mut luminance = 0.0_f64;
         let refraction_depth = REFRACTION_DEPTH * scale as f32;
         for output_y in 0..pixel_height {
             for output_x in 0..pixel_width {
@@ -207,6 +208,10 @@ impl DesktopSnapshot {
                     refracted_y - normal_y * chroma,
                 )
                 .blue;
+                luminance += (0.2126 * f64::from(red)
+                    + 0.7152 * f64::from(center.green)
+                    + 0.0722 * f64::from(blue))
+                    / 255.0;
                 write_argb32(
                     &mut output,
                     output_y as usize * stride as usize + output_x as usize * 4,
@@ -224,7 +229,8 @@ impl DesktopSnapshot {
             stride,
         )
         .ok()?;
-        Some(surface)
+        let pixel_count = f64::from(pixel_width) * f64::from(pixel_height);
+        Some((surface, luminance / pixel_count))
     }
 
     fn pixel(&self, x: i32, y: i32) -> Pixel {

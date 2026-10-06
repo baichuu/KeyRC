@@ -102,9 +102,14 @@ fn refresh_glass_backdrop(
         return;
     };
     let scale = area.scale_factor();
-    let backdrop = snapshot.render(position.0, position.1, WIDTH, height, scale);
+    let frame = snapshot.render(position.0, position.1, WIDTH, height, scale);
     let mut state = state.borrow_mut();
-    state.glass_backdrop = backdrop;
+    if let Some((backdrop, luminance)) = frame {
+        state.glass_backdrop = Some(backdrop);
+        state.glass_luminance = luminance;
+    } else {
+        state.glass_backdrop = None;
+    }
     state.glass_scale = scale;
     area.queue_draw();
 }
