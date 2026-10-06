@@ -249,6 +249,18 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     let _ = context.paint();
     context.set_operator(Operator::Over);
     context.push_group();
+    if state.theme.mode == DisplayMode::Full {
+        rounded_panel(
+            context,
+            0.5,
+            0.5,
+            f64::from(WIDTH) - 1.0,
+            f64::from(state.theme.mode.height()) - 1.0,
+            15,
+        );
+        state.theme.background.set(context);
+        let _ = context.fill();
+    }
     fill_panel(
         context,
         state,
