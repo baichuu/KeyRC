@@ -1,4 +1,4 @@
-use gtk::cairo::Context;
+use gtk::cairo::{Context, ImageSurface};
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -44,6 +44,7 @@ impl DisplayMode {
 pub(crate) struct Theme {
     pub(crate) mode: DisplayMode,
     pub(crate) opacity: f64,
+    pub(crate) liquid_glass: bool,
     pub(crate) active_bg: Color,
     pub(crate) active_fg: Color,
     pub(crate) key_text: Color,
@@ -56,6 +57,7 @@ impl Default for Theme {
         Self {
             mode: DisplayMode::Full,
             opacity: 1.0,
+            liquid_glass: false,
             active_bg: Color::rgb(0, 0, 0),
             active_fg: Color::rgb(255, 255, 255),
             key_text: Color::rgb(255, 255, 255),
@@ -224,6 +226,8 @@ pub(crate) struct StoredKey {
 
 pub(crate) struct AppState {
     pub(crate) theme: Theme,
+    pub(crate) glass_backdrop: Option<ImageSurface>,
+    pub(crate) glass_scale: i32,
     pub(crate) history: VecDeque<StoredKey>,
     pub(crate) active_modifiers: Modifiers,
     pub(crate) caps_lock: bool,
@@ -233,6 +237,8 @@ impl AppState {
     pub(crate) fn new(theme: Theme) -> Self {
         Self {
             theme,
+            glass_backdrop: None,
+            glass_scale: 1,
             history: VecDeque::with_capacity(MAX_HISTORY),
             active_modifiers: Modifiers::default(),
             caps_lock: false,

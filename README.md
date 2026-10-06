@@ -17,6 +17,7 @@ and five colors:
 [general]
 mode = "keys_only"
 opacity = 1.0
+liquid_glass = false
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"
@@ -42,8 +43,12 @@ missing colors use black/white defaults.
 
 `general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
-`general.opacity` controls the opacity of the entire popup from `0.0` to `1.0`
-and defaults to `1.0`. Opacity changes apply live.
+`general.opacity` controls only panel backgrounds from `0.0` to `1.0` and
+defaults to `1.0`. Text, key symbols, and icons remain fully opaque. Set
+`general.liquid_glass = true` to enable KeyRC's built-in backdrop blur, edge
+refraction, translucent tint, and chromatic specular rim. It does not require
+Picom or compositor blur support. An opacity near `0.32` matches the dark-glass
+preset used by the reference design. Both settings apply live.
 Modifiers appear once within each combination in both modes. When a modifier
 stays held for another key, KeyRC repeats it so each combination remains clear;
 for example, holding `Super` across `Tab` then `1` shows
@@ -81,7 +86,7 @@ cargo build --release --locked
 ```
 
 The output is `target/release/keyrc`. Runtime dependencies are GTK 3,
-AppIndicator, and X11 access for the global keyboard listener.
+AppIndicator, X11 access, and the X11 MIT-SHM extension supplied by libXext.
 
 ## Install
 

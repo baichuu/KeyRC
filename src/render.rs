@@ -4,7 +4,7 @@ use crate::model::{
     AppState, Color, DisplayMode, StoredKey, KEY_HEIGHT, MAX_DISPLAY_UNITS, MODIFIER_HEIGHT,
     MODIFIER_Y, WIDTH,
 };
-use gtk::cairo::{Context, Operator};
+use gtk::cairo::{Context, LinearGradient, Matrix, Operator, SurfacePattern};
 use gtk::glib::translate::{from_glib_full, ToGlibPtr};
 use gtk::pango::{FontDescription, Layout};
 use std::f64::consts::{FRAC_PI_2, PI};
@@ -57,9 +57,60 @@ fn fill_panel(
     height: f64,
     corners: u8,
 ) {
+    paint_panel_background(context, state, x, y, width, height, corners);
+    stroke_panel(context, state, x, y, width, height, corners);
+}
+
+fn paint_panel_background(
+    context: &Context,
+    state: &AppState,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    corners: u8,
+) {
+    if state.theme.liquid_glass {
+        if let Some(backdrop) = &state.glass_backdrop {
+            context.save().ok();
+            rounded_panel(context, x, y, width, height, corners);
+            context.clip();
+            let pattern = SurfacePattern::create(backdrop);
+            let mut matrix = Matrix::identity();
+            matrix.scale(f64::from(state.glass_scale), f64::from(state.glass_scale));
+            pattern.set_matrix(matrix);
+            let _ = context.set_source(&pattern);
+            let _ = context.paint_with_alpha(state.theme.opacity);
+
+            // Tint changes the captured pixels while ATOP keeps the final panel
+            // alpha equal to `opacity`.
+            context.set_operator(Operator::Atop);
+            state.theme.background.with_alpha(0.32).set(context);
+            let _ = context.paint();
+            context.restore().ok();
+            return;
+        }
+    }
+
     rounded_panel(context, x, y, width, height, corners);
-    state.theme.background.set(context);
-    let _ = context.fill_preserve();
+    state
+        .theme
+        .background
+        .with_alpha(state.theme.opacity)
+        .set(context);
+    let _ = context.fill();
+}
+
+fn stroke_panel(
+    context: &Context,
+    state: &AppState,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    corners: u8,
+) {
+    rounded_panel(context, x, y, width, height, corners);
     state.theme.border.set(context);
     context.set_line_width(1.0);
     let _ = context.stroke();
@@ -218,11 +269,20 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
             corners,
         );
         if active {
-            state.theme.active_bg.set(context);
-        } else {
-            state.theme.background.set(context);
+            context.save().ok();
+            if state.theme.liquid_glass && state.glass_backdrop.is_some() {
+                context.set_operator(Operator::Atop);
+            } else {
+                context.set_operator(Operator::Source);
+            }
+            state
+                .theme
+                .active_bg
+                .with_alpha(state.theme.opacity)
+                .set(context);
+            let _ = context.fill_preserve();
+            context.restore().ok();
         }
-        let _ = context.fill_preserve();
         state.theme.border.set(context);
         context.set_line_width(1.0);
         let _ = context.stroke();
@@ -257,37 +317,60 @@ fn stroke_full_outline(context: &Context, state: &AppState) {
     let _ = context.stroke();
 }
 
+fn stroke_liquid_glass(context: &Context, state: &AppState) {
+    if !state.theme.liquid_glass {
+        return;
+    }
+    let height = f64::from(state.theme.mode.height());
+    rounded_panel(context, 1.0, 1.0, f64::from(WIDTH) - 2.0, height - 2.0, 15);
+    let specular = LinearGradient::new(0.0, 0.0, f64::from(WIDTH), height);
+    specular.add_color_stop_rgba(0.0, 1.0, 0.98, 0.94, 0.39);
+    specular.add_color_stop_rgba(0.22, 1.0, 0.98, 0.94, 0.16);
+    specular.add_color_stop_rgba(0.50, 1.0, 0.98, 0.94, 0.05);
+    specular.add_color_stop_rgba(0.78, 1.0, 0.98, 0.94, 0.11);
+    specular.add_color_stop_rgba(1.0, 1.0, 0.98, 0.94, 0.25);
+    let _ = context.set_source(&specular);
+    context.set_line_width(1.25);
+    let _ = context.stroke();
+}
+
 pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     context.set_operator(Operator::Source);
     context.set_source_rgba(0.0, 0.0, 0.0, 0.0);
     let _ = context.paint();
     context.set_operator(Operator::Over);
-    context.push_group();
     if state.theme.mode == DisplayMode::Full {
-        rounded_panel(
+        paint_panel_background(
             context,
+            state,
             0.5,
             0.5,
             f64::from(WIDTH) - 1.0,
             f64::from(state.theme.mode.height()) - 1.0,
             15,
         );
-        state.theme.background.set(context);
-        let _ = context.fill();
     }
-    fill_panel(
-        context,
-        state,
-        0.5,
-        0.5,
-        f64::from(WIDTH) - 1.0,
-        f64::from(KEY_HEIGHT) - 1.0,
-        if state.theme.mode == DisplayMode::KeysOnly {
-            15
-        } else {
-            3
-        },
-    );
+    if state.theme.mode == DisplayMode::KeysOnly {
+        fill_panel(
+            context,
+            state,
+            0.5,
+            0.5,
+            f64::from(WIDTH) - 1.0,
+            f64::from(KEY_HEIGHT) - 1.0,
+            15,
+        );
+    } else {
+        stroke_panel(
+            context,
+            state,
+            0.5,
+            0.5,
+            f64::from(WIDTH) - 1.0,
+            f64::from(KEY_HEIGHT) - 1.0,
+            3,
+        );
+    }
     let mut shown: Vec<_> = state.history.iter().take(MAX_DISPLAY_UNITS).collect();
     shown.reverse();
     let widths: Vec<f64> = shown
@@ -304,6 +387,5 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
         draw_modifier_row(context, icons, state);
         stroke_full_outline(context, state);
     }
-    let _ = context.pop_group_to_source();
-    let _ = context.paint_with_alpha(state.theme.opacity);
+    stroke_liquid_glass(context, state);
 }

@@ -491,6 +491,7 @@ dependencies = [
  "libappindicator",
  "rdev",
  "toml 0.9.8",
+ "x11",
 ]
 
 [[package]]
