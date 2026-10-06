@@ -26,7 +26,7 @@ unsafe extern "C" {
 fn rounded_panel(context: &Context, x: f64, y: f64, width: f64, height: f64, corners: u8) {
     let right = x + width;
     let bottom = y + height;
-    let radius = CORNER_RADIUS.min(width / 2.0).min(height / 2.0);
+    let radius = CORNER_RADIUS.min(width / 2.0);
     context.new_sub_path();
     context.move_to(x + if corners & 1 != 0 { radius } else { 0.0 }, y);
     context.line_to(right - if corners & 2 != 0 { radius } else { 0.0 }, y);
