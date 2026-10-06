@@ -4,6 +4,7 @@ mod icons;
 mod input;
 mod keys;
 mod model;
+mod native_compositor;
 mod position;
 mod render;
 mod theme;

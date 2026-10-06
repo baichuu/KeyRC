@@ -224,6 +224,7 @@ pub(crate) struct StoredKey {
 
 pub(crate) struct AppState {
     pub(crate) theme: Theme,
+    pub(crate) native_glass: bool,
     pub(crate) glass_backdrop: Option<ImageSurface>,
     pub(crate) glass_scale: i32,
     pub(crate) glass_luminance: f64,
@@ -236,6 +237,7 @@ impl AppState {
     pub(crate) fn new(theme: Theme) -> Self {
         Self {
             theme,
+            native_glass: false,
             glass_backdrop: None,
             glass_scale: 1,
             glass_luminance: 0.0,

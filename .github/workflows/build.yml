@@ -30,6 +30,10 @@ jobs:
             libgtk-3-dev \
             libgtk-layer-shell-dev \
             libx11-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxfixes-dev \
+            libxrender-dev \
             libxtst-dev
       - name: Install Rust toolchain
         run: rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
@@ -45,6 +49,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: keyrc-linux-x86_64-${{ github.sha }}
-          path: target/release/keyrc
+          path: |
+            target/release/keyrc
+            target/release/keyrc-compositor
           if-no-files-found: error
           retention-days: 7

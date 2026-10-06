@@ -3,7 +3,7 @@ use crate::input;
 use crate::model::{AppState, UiMessage, WIDTH};
 #[cfg(debug_assertions)]
 use crate::model::{DisplayMode, KeyMessage};
-use crate::{glass::DesktopSnapshot, position, render, theme};
+use crate::{glass::DesktopSnapshot, native_compositor, position, render, theme};
 use gtk::gdk;
 use gtk::glib::{self, ControlFlow};
 use gtk::prelude::*;
@@ -93,7 +93,7 @@ fn refresh_glass_backdrop(
 ) {
     let height = {
         let state = state.borrow();
-        if !state.theme.liquid_glass {
+        if !state.theme.liquid_glass || state.native_glass {
             return;
         }
         state.theme.mode.height()
@@ -169,12 +169,19 @@ pub(crate) fn run() {
     let icons = Rc::new(Icons::new());
     let position_path = position::path();
     let initial_position = position::read(position_path.as_deref());
-    let desktop = Rc::new(RefCell::new(if initial_theme.liquid_glass {
-        DesktopSnapshot::capture()
-    } else {
-        None
-    }));
-    let initial_state = AppState::new(initial_theme.clone());
+    let native_compositor = Rc::new(RefCell::new(native_compositor::NativeCompositor::start(
+        initial_theme.liquid_glass,
+    )));
+    let native_glass = native_compositor.borrow().active();
+    let desktop = Rc::new(RefCell::new(
+        if initial_theme.liquid_glass && !native_glass {
+            DesktopSnapshot::capture()
+        } else {
+            None
+        },
+    ));
+    let mut initial_state = AppState::new(initial_theme.clone());
+    initial_state.native_glass = native_glass;
     #[cfg(debug_assertions)]
     let initial_state = apply_preview_keys(initial_state);
     let state = Rc::new(RefCell::new(initial_state));
@@ -219,10 +226,11 @@ pub(crate) fn run() {
                 writer(position);
             }
         }
-        if !configure_dragging.get()
-            && configure_state.borrow().theme.liquid_glass
-            && !configure_scheduled.replace(true)
-        {
+        let glass_needs_snapshot = {
+            let state = configure_state.borrow();
+            state.theme.liquid_glass && !state.native_glass
+        };
+        if !configure_dragging.get() && glass_needs_snapshot && !configure_scheduled.replace(true) {
             let position = Rc::clone(&configure_position);
             let state = Rc::clone(&configure_state);
             let area = configure_area.clone();
@@ -246,7 +254,11 @@ pub(crate) fn run() {
         if event.button() == 1 {
             let (pointer_x, pointer_y) = event.root();
             drag_window.begin_move_drag(1, pointer_x as i32, pointer_y as i32, event.time());
-            if drag_state.borrow().theme.liquid_glass && !drag_running.replace(true) {
+            let glass_needs_snapshot = {
+                let state = drag_state.borrow();
+                state.theme.liquid_glass && !state.native_glass
+            };
+            if glass_needs_snapshot && !drag_running.replace(true) {
                 let window = drag_window.clone();
                 let area = drag_area.clone();
                 let state = Rc::clone(&drag_state);
@@ -303,6 +315,7 @@ pub(crate) fn run() {
     let receiver_window = window.clone();
     let receiver_position = Rc::clone(&current_position);
     let receiver_desktop = Rc::clone(&desktop);
+    let receiver_compositor = Rc::clone(&native_compositor);
     receiver.attach(None, move |message| {
         match message {
             UiMessage::Key(message) => {
@@ -334,14 +347,28 @@ pub(crate) fn run() {
                 let old_theme = receiver_state.borrow().theme.clone();
                 let old_mode = old_theme.mode;
                 let new_mode = theme.mode;
-                receiver_state.borrow_mut().theme = theme;
+                let native_glass = receiver_compositor.borrow_mut().ensure(theme.liquid_glass);
+                {
+                    let mut state = receiver_state.borrow_mut();
+                    state.theme = theme;
+                    state.native_glass = native_glass;
+                    if native_glass {
+                        state.glass_backdrop = None;
+                    }
+                }
+                if let Some(native) = receiver_window.window() {
+                    native_compositor::mark_window(
+                        &native,
+                        receiver_state.borrow().theme.liquid_glass && native_glass,
+                    );
+                }
                 if new_mode != old_mode {
                     let height = new_mode.height();
                     receiver_area.set_size_request(WIDTH, height);
                     receiver_window.set_size_request(WIDTH, height);
                     receiver_window.resize(WIDTH, height);
                 }
-                if receiver_state.borrow().theme.liquid_glass {
+                if receiver_state.borrow().theme.liquid_glass && !native_glass {
                     if receiver_desktop.borrow().is_none() {
                         receiver_window.hide();
                         if let Some(display) = gdk::Display::default() {
@@ -358,7 +385,7 @@ pub(crate) fn run() {
                         &receiver_area,
                         receiver_position.get(),
                     );
-                } else if old_theme.liquid_glass {
+                } else if old_theme.liquid_glass && !native_glass {
                     receiver_state.borrow_mut().glass_backdrop = None;
                 }
                 receiver_area.queue_draw();
@@ -375,6 +402,12 @@ pub(crate) fn run() {
     window.show_all();
     window.stick();
     window.set_accept_focus(false);
+    if let Some(native) = window.window() {
+        native_compositor::mark_window(
+            &native,
+            initial_theme.liquid_glass && state.borrow().native_glass,
+        );
+    }
     if initial_theme.liquid_glass {
         let position = window.position();
         current_position.set(position);

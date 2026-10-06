@@ -60,6 +60,10 @@ jobs:
             libgtk-3-dev \
             libgtk-layer-shell-dev \
             libx11-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxfixes-dev \
+            libxrender-dev \
             libxtst-dev
       - name: Install Rust toolchain
         run: rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
@@ -78,7 +82,10 @@ jobs:
           package="keyrc-${RELEASE_TAG}-linux-x86_64"
           mkdir --parents "dist/${package}/assets"
           install --mode 755 target/release/keyrc "dist/${package}/keyrc"
-          install --mode 644 LICENSE README.md config.example.toml "dist/${package}/"
+          install --mode 755 target/release/keyrc-compositor "dist/${package}/keyrc-compositor"
+          install --mode 644 LICENSE README.md THIRD_PARTY_NOTICES.md config.example.toml "dist/${package}/"
+          mkdir --parents "dist/${package}/compositor"
+          install --mode 644 compositor/COPYING "dist/${package}/compositor/COPYING"
           install --mode 644 assets/keyrc.png "dist/${package}/assets/keyrc.png"
           tar --create --gzip --file "dist/${package}.tar.gz" --directory dist "${package}"
           sha256sum "dist/${package}.tar.gz" > "dist/${package}.tar.gz.sha256"

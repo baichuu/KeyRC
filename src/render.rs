@@ -57,7 +57,7 @@ fn paint_panel_background(
     height: f64,
     corners: u8,
 ) {
-    if state.theme.liquid_glass {
+    if state.theme.liquid_glass && !state.native_glass {
         if let Some(backdrop) = &state.glass_backdrop {
             context.save().ok();
             rounded_panel(context, x, y, width, height, corners);
@@ -89,7 +89,7 @@ fn paint_panel_background(
 }
 
 fn set_panel_border(context: &Context, state: &AppState) {
-    if state.theme.liquid_glass {
+    if state.theme.liquid_glass && !state.native_glass {
         let tint_luminance = state.theme.background.red * 0.2126
             + state.theme.background.green * 0.7152
             + state.theme.background.blue * 0.0722;
