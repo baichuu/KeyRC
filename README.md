@@ -1,8 +1,7 @@
 # KeyRC
 
 A small always-on-top keystroke display drawn natively with GTK 3 and Cairo.
-It does not embed WebKit. On X11/Openbox, an included compositor helper provides
-live glass without Picom.
+It does not embed WebKit.
 
 <p align="center">
   <img src="assets/keyrc-preview.png" alt="KeyRC showing keyboard shortcuts" width="520">
@@ -18,7 +17,6 @@ and four colors:
 [general]
 mode = "keys_only"
 opacity = 1.0
-liquid_glass = false
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"
@@ -44,18 +42,8 @@ Inactive symbols use `key_text` at 35% opacity. `background` fills the popup;
 `general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.
 `general.opacity` controls only panel backgrounds from `0.0` to `1.0` and
-defaults to `1.0`. Text, key symbols, and icons remain fully opaque. Set
-`general.liquid_glass = true` to enable the glass material. On X11 without an
-existing compositor, KeyRC starts `keyrc-compositor`, which composites the
-desktop with XComposite/XDamage and blurs the live pixels behind the rounded
-popup. Switching applications, moving windows, and changing their content
-updates the glass without capturing KeyRC itself. It stops with KeyRC. If
-another compositor already owns the X11 compositor selection, KeyRC leaves it
-untouched and uses the built-in snapshot renderer as a fallback. An opacity
-near `0.32` matches the dark-glass preset used by the reference design. The
-fallback re-captures after the active application or workspace changes, so an
-Alt+Tab never keeps the previous application's backdrop. Both settings apply
-live.
+defaults to `1.0`. Text, key symbols, and icons remain fully opaque. Opacity
+changes apply live.
 Modifiers appear once within each combination in both modes. When a modifier
 stays held for another key, KeyRC repeats it so each combination remains clear;
 for example, holding `Super` across `Tab` then `1` shows
@@ -79,8 +67,6 @@ Moves and normal window closure save the position atomically.
 
 The native window restores its size, mode, and cached position before it is
 shown. This avoids displaying it at the default position before moving it.
-While the popup is being dragged, the X11 compositor redraws its live backdrop
-at the new position. The snapshot fallback samples new coordinates at 60 FPS.
 The popup remains visible on every workspace. It does not accept focus and
 cannot be closed through the window manager; dragging is its only direct
 interaction. Use the tray icon to toggle display mode or quit KeyRC. A missing
@@ -94,9 +80,8 @@ Build the standalone release binary with:
 cargo build --release --locked
 ```
 
-The outputs are `target/release/keyrc` and
-`target/release/keyrc-compositor`. Runtime dependencies are GTK 3,
-AppIndicator, X11, XComposite, XDamage, XFixes, XRender, and libXext.
+The output is `target/release/keyrc`. Runtime dependencies are GTK 3,
+AppIndicator, and X11.
 
 ## Install
 
@@ -109,7 +94,6 @@ Run the user-local installer from the repository root:
 It builds the release binary and installs:
 
 - `~/.local/bin/keyrc`
-- `~/.local/bin/keyrc-compositor`
 - `~/.local/share/applications/keyrc.desktop`
 - `~/.local/share/icons/hicolor/1024x1024/apps/keyrc.png`
 

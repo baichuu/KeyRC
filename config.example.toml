@@ -2,7 +2,6 @@
 [general]
 mode = "keys_only" # "full" also displays the modifier row.
 opacity = 1.0 # From 0.0 (invisible) to 1.0 (opaque).
-liquid_glass = false # Blur, tint, and specular glass highlights.
 
 [keymap]
 toggle_mode = "Ctrl+Alt+M"

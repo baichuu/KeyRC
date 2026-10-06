@@ -50,10 +50,6 @@ fn parse(contents: &str) -> Settings {
     if let Some(opacity) = opacity(general) {
         settings.theme.opacity = opacity;
     }
-    settings.theme.liquid_glass = general
-        .and_then(|values| values.get("liquid_glass"))
-        .and_then(toml::Value::as_bool)
-        .unwrap_or_default();
     let colors = config.get("colors").and_then(toml::Value::as_table);
     for (key, target) in [
         ("active_fg", &mut settings.theme.active_fg),
@@ -176,7 +172,6 @@ mod tests {
             r##"[general]
 mode = "keys_only"
 opacity = 0.8
-liquid_glass = true
 
 [keymap]
 toggle_mode = "Super+Shift+K"
@@ -191,7 +186,6 @@ border = "#445566"
         let theme = settings.theme;
         assert!(theme.mode == DisplayMode::KeysOnly);
         assert_eq!(theme.opacity, 0.8);
-        assert!(theme.liquid_glass);
         assert_eq!(theme.active_fg.alpha, 0xdd as f64 / 255.0);
         assert!(theme.key_text == Color::rgb(255, 255, 255));
         assert!(settings.keymap.toggle_mode.key == "K");
@@ -205,7 +199,6 @@ border = "#445566"
     fn uses_default_quit_shortcut_when_missing() {
         let settings = parse("");
         assert_eq!(settings.theme.opacity, 1.0);
-        assert!(!settings.theme.liquid_glass);
         assert_eq!(settings.keymap.quit.key, "Q");
         assert!(settings.keymap.quit.modifiers.ctrl);
         assert!(settings.keymap.quit.modifiers.alt);

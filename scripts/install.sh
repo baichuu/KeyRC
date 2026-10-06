@@ -6,7 +6,6 @@ data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
 cache_home=${XDG_CACHE_HOME:-"$HOME/.cache"}
 binary_dir=${KEYRC_BIN_DIR:-"$HOME/.local/bin"}
 binary="$binary_dir/keyrc"
-compositor="$binary_dir/keyrc-compositor"
 desktop_dir="$data_home/applications"
 desktop_file="$desktop_dir/keyrc.desktop"
 icon_root="$data_home/icons/hicolor"
@@ -32,21 +31,14 @@ if $build; then
 fi
 
 release_binary="$project_dir/target/release/keyrc"
-release_compositor="$project_dir/target/release/keyrc-compositor"
 if [[ ! -x "$release_binary" ]]; then
   echo "Release binary not found: $release_binary" >&2
-  exit 1
-fi
-if [[ ! -x "$release_compositor" ]]; then
-  echo "Release compositor not found: $release_compositor" >&2
   exit 1
 fi
 
 mkdir -p "$binary_dir" "$desktop_dir" "$icon_dir"
 install -m 755 "$release_binary" "$binary.new"
 mv -f "$binary.new" "$binary"
-install -m 755 "$release_compositor" "$compositor.new"
-mv -f "$compositor.new" "$compositor"
 install -m 644 "$project_dir/assets/keyrc.png" "$icon_file"
 
 desktop_tmp=$(mktemp "$desktop_dir/.keyrc.desktop.XXXXXX")
@@ -94,23 +86,8 @@ if $start && [[ -n ${DISPLAY:-} ]]; then
       sleep 0.1
     done
   fi
-  mapfile -t compositor_pids < <(pgrep -f "^${compositor}$" || true)
-  if ((${#compositor_pids[@]})); then
-    kill "${compositor_pids[@]}"
-    for _ in {1..50}; do
-      alive=false
-      for pid in "${compositor_pids[@]}"; do
-        if kill -0 "$pid" 2>/dev/null; then
-          alive=true
-          break
-        fi
-      done
-      $alive || break
-      sleep 0.1
-    done
-  fi
   setsid --fork "$binary" </dev/null >"$cache_home/keyrc.log" 2>&1
 fi
 
-printf 'Installed KeyRC:\n  binary: %s\n  compositor: %s\n  desktop: %s\n  icon: %s\n' \
-  "$binary" "$compositor" "$desktop_file" "$icon_file"
+printf 'Installed KeyRC:\n  binary: %s\n  desktop: %s\n  icon: %s\n' \
+  "$binary" "$desktop_file" "$icon_file"

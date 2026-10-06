@@ -4,7 +4,7 @@ use crate::model::{
     AppState, Color, DisplayMode, StoredKey, KEY_HEIGHT, MAX_DISPLAY_UNITS, MODIFIER_HEIGHT,
     MODIFIER_Y, WIDTH,
 };
-use gtk::cairo::{Context, Matrix, Operator, SurfacePattern};
+use gtk::cairo::{Context, Operator};
 use gtk::glib::translate::{from_glib_full, ToGlibPtr};
 use gtk::pango::{FontDescription, Layout};
 use std::f64::consts::{FRAC_PI_2, PI};
@@ -57,28 +57,6 @@ fn paint_panel_background(
     height: f64,
     corners: u8,
 ) {
-    if state.theme.liquid_glass && !state.native_glass {
-        if let Some(backdrop) = &state.glass_backdrop {
-            context.save().ok();
-            rounded_panel(context, x, y, width, height, corners);
-            context.clip();
-            let pattern = SurfacePattern::create(backdrop);
-            let mut matrix = Matrix::identity();
-            matrix.scale(f64::from(state.glass_scale), f64::from(state.glass_scale));
-            pattern.set_matrix(matrix);
-            let _ = context.set_source(&pattern);
-            let _ = context.paint_with_alpha(state.theme.opacity);
-
-            // Tint changes the captured pixels while ATOP keeps the final panel
-            // alpha equal to `opacity`.
-            context.set_operator(Operator::Atop);
-            state.theme.background.with_alpha(0.32).set(context);
-            let _ = context.paint();
-            context.restore().ok();
-            return;
-        }
-    }
-
     rounded_panel(context, x, y, width, height, corners);
     state
         .theme
@@ -89,21 +67,7 @@ fn paint_panel_background(
 }
 
 fn set_panel_border(context: &Context, state: &AppState) {
-    if state.theme.liquid_glass && !state.native_glass {
-        let tint_luminance = state.theme.background.red * 0.2126
-            + state.theme.background.green * 0.7152
-            + state.theme.background.blue * 0.0722;
-        let tint_amount = 0.32 * state.theme.opacity;
-        let displayed_luminance =
-            state.glass_luminance * (1.0 - tint_amount) + tint_luminance * tint_amount;
-        if displayed_luminance >= 0.55 {
-            Color::rgb(0, 0, 0).with_alpha(0.28).set(context);
-        } else {
-            Color::rgb(255, 250, 240).with_alpha(0.20).set(context);
-        }
-    } else {
-        state.theme.border.set(context);
-    }
+    state.theme.border.set(context);
 }
 
 fn text_layout(context: &Context, text: &str, size: f64) -> Layout {

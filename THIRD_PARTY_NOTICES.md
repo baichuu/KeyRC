@@ -6,17 +6,6 @@ The special-key symbols and modifier ordering in KeyRC are based on KeyCastr's
 KeyRC redraws those symbols as its own SVG paths so rendering does not depend on
 Apple fonts.
 
-The optional liquid-glass material is visually based on the blur, translucent
-tint, chromatic edge, and resting specular treatment in
-[`liquidglass-kde-widgets`](https://github.com/jaxparrow07/liquidglass-kde-widgets).
-KeyRC implements the effect independently with its GTK/Cairo backdrop renderer;
-it does not bundle the project's QML or shaders.
-
-The optional X11 compositor helper is derived from X.Org's
-[`xcompmgr` at commit `bfb36c8`](https://gitlab.freedesktop.org/xorg/app/xcompmgr/-/commit/bfb36c8d4f75d3af8a094dbd9786df20b2045d5f),
-originally written by Keith Packard. KeyRC retains its copyright and permission
-notice in [`compositor/COPYING`](compositor/COPYING).
-
 ## KeyCastr
 
 Copyright (c) 2009 Stephen Deken. All rights reserved.
