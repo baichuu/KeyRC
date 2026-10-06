@@ -85,6 +85,30 @@ fn configure_window(window: &gtk::Window, height: i32) {
     }
 }
 
+fn refresh_glass_backdrop(
+    desktop: &RefCell<Option<DesktopSnapshot>>,
+    state: &RefCell<AppState>,
+    area: &gtk::DrawingArea,
+    position: (i32, i32),
+) {
+    let height = {
+        let state = state.borrow();
+        if !state.theme.liquid_glass {
+            return;
+        }
+        state.theme.mode.height()
+    };
+    let Some(snapshot) = &*desktop.borrow() else {
+        return;
+    };
+    let scale = area.scale_factor();
+    let backdrop = snapshot.render(position.0, position.1, WIDTH, height, scale);
+    let mut state = state.borrow_mut();
+    state.glass_backdrop = backdrop;
+    state.glass_scale = scale;
+    area.queue_draw();
+}
+
 #[cfg(debug_assertions)]
 fn apply_preview_mode(mut theme: crate::model::Theme) -> crate::model::Theme {
     match std::env::var("KEYRC_PREVIEW_MODE").as_deref() {
@@ -168,14 +192,6 @@ pub(crate) fn run() {
         glib::Propagation::Stop
     });
 
-    let drag_window = window.clone();
-    drawing_area.connect_button_press_event(move |_, event| {
-        if event.button() == 1 {
-            let (x, y) = event.root();
-            drag_window.begin_move_drag(1, x as i32, y as i32, event.time());
-        }
-        glib::Propagation::Stop
-    });
     window.connect_delete_event(|_, _| glib::Propagation::Stop);
 
     let position_ready = Rc::new(Cell::new(false));
@@ -188,6 +204,8 @@ pub(crate) fn run() {
     let configure_desktop = Rc::clone(&desktop);
     let glass_update_scheduled = Rc::new(Cell::new(false));
     let configure_scheduled = Rc::clone(&glass_update_scheduled);
+    let drag_refresh_running = Rc::new(Cell::new(false));
+    let configure_dragging = Rc::clone(&drag_refresh_running);
     window.connect_configure_event(move |_, event| {
         let position = event.position();
         configure_position.set(position);
@@ -196,27 +214,71 @@ pub(crate) fn run() {
                 writer(position);
             }
         }
-        if configure_state.borrow().theme.liquid_glass && !configure_scheduled.replace(true) {
+        if !configure_dragging.get()
+            && configure_state.borrow().theme.liquid_glass
+            && !configure_scheduled.replace(true)
+        {
             let position = Rc::clone(&configure_position);
             let state = Rc::clone(&configure_state);
             let area = configure_area.clone();
             let desktop = Rc::clone(&configure_desktop);
             let scheduled = Rc::clone(&configure_scheduled);
             glib::timeout_add_local_once(Duration::from_millis(24), move || {
-                let (x, y) = position.get();
-                let height = state.borrow().theme.mode.height();
-                if let Some(snapshot) = &*desktop.borrow() {
-                    let scale = area.scale_factor();
-                    let backdrop = snapshot.render(x, y, WIDTH, height, scale);
-                    let mut state = state.borrow_mut();
-                    state.glass_backdrop = backdrop;
-                    state.glass_scale = scale;
-                }
+                refresh_glass_backdrop(&desktop, &state, &area, position.get());
                 scheduled.set(false);
-                area.queue_draw();
             });
         }
         false
+    });
+
+    let drag_window = window.clone();
+    let drag_area = drawing_area.clone();
+    let drag_state = Rc::clone(&state);
+    let drag_desktop = Rc::clone(&desktop);
+    let drag_position = Rc::clone(&current_position);
+    let drag_running = Rc::clone(&drag_refresh_running);
+    drawing_area.connect_button_press_event(move |_, event| {
+        if event.button() == 1 {
+            let (pointer_x, pointer_y) = event.root();
+            drag_window.begin_move_drag(1, pointer_x as i32, pointer_y as i32, event.time());
+            if drag_state.borrow().theme.liquid_glass && !drag_running.replace(true) {
+                let window = drag_window.clone();
+                let area = drag_area.clone();
+                let state = Rc::clone(&drag_state);
+                let desktop = Rc::clone(&drag_desktop);
+                let position = Rc::clone(&drag_position);
+                let running = Rc::clone(&drag_running);
+                let mut rendered_position = position.get();
+                glib::timeout_add_local(Duration::from_millis(16), move || {
+                    let latest = window.position();
+                    if latest != rendered_position {
+                        rendered_position = latest;
+                        position.set(latest);
+                        refresh_glass_backdrop(&desktop, &state, &area, latest);
+                    }
+
+                    let button_held = gdk::Display::default()
+                        .and_then(|display| display.default_seat())
+                        .and_then(|seat| seat.pointer())
+                        .and_then(|pointer| {
+                            window
+                                .window()
+                                .map(|native| native.device_position(&pointer).3)
+                        })
+                        .is_some_and(|mask| mask.contains(gdk::ModifierType::BUTTON1_MASK));
+                    if button_held {
+                        ControlFlow::Continue
+                    } else {
+                        let latest = window.position();
+                        position.set(latest);
+                        refresh_glass_backdrop(&desktop, &state, &area, latest);
+                        running.set(false);
+                        ControlFlow::Break
+                    }
+                });
+            }
+        }
+        glib::Propagation::Stop
     });
 
     #[allow(deprecated)]
@@ -285,15 +347,12 @@ pub(crate) fn run() {
                         receiver_window.stick();
                         receiver_window.set_accept_focus(false);
                     }
-                    let (x, y) = receiver_position.get();
-                    let height = new_mode.height();
-                    if let Some(snapshot) = &*receiver_desktop.borrow() {
-                        let scale = receiver_window.scale_factor();
-                        let backdrop = snapshot.render(x, y, WIDTH, height, scale);
-                        let mut state = receiver_state.borrow_mut();
-                        state.glass_backdrop = backdrop;
-                        state.glass_scale = scale;
-                    }
+                    refresh_glass_backdrop(
+                        &receiver_desktop,
+                        &receiver_state,
+                        &receiver_area,
+                        receiver_position.get(),
+                    );
                 } else if old_theme.liquid_glass {
                     receiver_state.borrow_mut().glass_backdrop = None;
                 }
@@ -312,16 +371,9 @@ pub(crate) fn run() {
     window.stick();
     window.set_accept_focus(false);
     if initial_theme.liquid_glass {
-        let (x, y) = window.position();
-        current_position.set((x, y));
-        if let Some(snapshot) = &*desktop.borrow() {
-            let scale = window.scale_factor();
-            let backdrop = snapshot.render(x, y, WIDTH, initial_theme.mode.height(), scale);
-            let mut state = state.borrow_mut();
-            state.glass_backdrop = backdrop;
-            state.glass_scale = scale;
-        }
-        drawing_area.queue_draw();
+        let position = window.position();
+        current_position.set(position);
+        refresh_glass_backdrop(&desktop, &state, &drawing_area, position);
     }
     if let Some(native) = window.window() {
         native.stick();

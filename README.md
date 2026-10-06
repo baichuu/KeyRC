@@ -72,6 +72,8 @@ Moves and normal window closure save the position atomically.
 
 The native window restores its size, mode, and cached position before it is
 shown. This avoids displaying it at the default position before moving it.
+While the popup is being dragged, the built-in glass renderer samples the new
+screen coordinates at 60 FPS so the backdrop stays anchored to the desktop.
 The popup remains visible on every workspace. It does not accept focus and
 cannot be closed through the window manager; dragging is its only direct
 interaction. Use the tray icon to toggle display mode or quit KeyRC. A missing
