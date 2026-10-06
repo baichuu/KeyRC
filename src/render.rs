@@ -4,7 +4,7 @@ use crate::model::{
     AppState, Color, DisplayMode, StoredKey, KEY_HEIGHT, MAX_DISPLAY_UNITS, MODIFIER_HEIGHT,
     MODIFIER_Y, WIDTH,
 };
-use gtk::cairo::{Context, LinearGradient, Matrix, Operator, SurfacePattern};
+use gtk::cairo::{Context, Matrix, Operator, SurfacePattern};
 use gtk::glib::translate::{from_glib_full, ToGlibPtr};
 use gtk::pango::{FontDescription, Layout};
 use std::f64::consts::{FRAC_PI_2, PI};
@@ -48,19 +48,6 @@ fn rounded_panel(context: &Context, x: f64, y: f64, width: f64, height: f64, cor
     context.close_path();
 }
 
-fn fill_panel(
-    context: &Context,
-    state: &AppState,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    corners: u8,
-) {
-    paint_panel_background(context, state, x, y, width, height, corners);
-    stroke_panel(context, state, x, y, width, height, corners);
-}
-
 fn paint_panel_background(
     context: &Context,
     state: &AppState,
@@ -99,21 +86,6 @@ fn paint_panel_background(
         .with_alpha(state.theme.opacity)
         .set(context);
     let _ = context.fill();
-}
-
-fn stroke_panel(
-    context: &Context,
-    state: &AppState,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    corners: u8,
-) {
-    rounded_panel(context, x, y, width, height, corners);
-    set_panel_border(context, state);
-    context.set_line_width(1.0);
-    let _ = context.stroke();
 }
 
 fn set_panel_border(context: &Context, state: &AppState) {
@@ -272,38 +244,6 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
         (ModifierIcon::Super, state.active_modifiers.super_key),
     ];
     for (index, (icon, active)) in panels.into_iter().enumerate() {
-        let x = index as f64 * 73.0;
-        let corners = match index {
-            0 => 8,
-            3 => 4,
-            _ => 0,
-        };
-        rounded_panel(
-            context,
-            x + 0.5,
-            MODIFIER_Y + 0.5,
-            70.0,
-            MODIFIER_HEIGHT - 1.0,
-            corners,
-        );
-        if active {
-            context.save().ok();
-            if state.theme.liquid_glass && state.glass_backdrop.is_some() {
-                context.set_operator(Operator::Atop);
-            } else {
-                context.set_operator(Operator::Source);
-            }
-            state
-                .theme
-                .active_bg
-                .with_alpha(state.theme.opacity)
-                .set(context);
-            let _ = context.fill_preserve();
-            context.restore().ok();
-        }
-        set_panel_border(context, state);
-        context.set_line_width(1.0);
-        let _ = context.stroke();
         let color = if active {
             state.theme.active_fg
         } else {
@@ -313,12 +253,25 @@ fn draw_modifier_row(context: &Context, icons: &Icons, state: &AppState) {
             context,
             icons,
             icon,
-            x + 35.5,
+            (index as f64 + 0.5) * f64::from(WIDTH) / 4.0,
             MODIFIER_Y + MODIFIER_HEIGHT / 2.0,
             false,
             color,
         );
     }
+}
+
+fn stroke_separators(context: &Context, state: &AppState) {
+    set_panel_border(context, state);
+    context.set_line_width(1.0);
+    context.move_to(0.5, f64::from(KEY_HEIGHT) + 0.5);
+    context.line_to(f64::from(WIDTH) - 0.5, f64::from(KEY_HEIGHT) + 0.5);
+    for index in 1..4 {
+        let x = f64::from(WIDTH) * f64::from(index) / 4.0;
+        context.move_to(x, f64::from(KEY_HEIGHT) + 0.5);
+        context.line_to(x, f64::from(state.theme.mode.height()) - 0.5);
+    }
+    let _ = context.stroke();
 }
 
 fn stroke_full_outline(context: &Context, state: &AppState) {
@@ -335,60 +288,20 @@ fn stroke_full_outline(context: &Context, state: &AppState) {
     let _ = context.stroke();
 }
 
-fn stroke_liquid_glass(context: &Context, state: &AppState) {
-    if !state.theme.liquid_glass {
-        return;
-    }
-    let height = f64::from(state.theme.mode.height());
-    rounded_panel(context, 1.0, 1.0, f64::from(WIDTH) - 2.0, height - 2.0, 15);
-    let specular = LinearGradient::new(0.0, 0.0, f64::from(WIDTH), height);
-    specular.add_color_stop_rgba(0.0, 1.0, 0.98, 0.94, 0.39);
-    specular.add_color_stop_rgba(0.22, 1.0, 0.98, 0.94, 0.16);
-    specular.add_color_stop_rgba(0.50, 1.0, 0.98, 0.94, 0.05);
-    specular.add_color_stop_rgba(0.78, 1.0, 0.98, 0.94, 0.11);
-    specular.add_color_stop_rgba(1.0, 1.0, 0.98, 0.94, 0.25);
-    let _ = context.set_source(&specular);
-    context.set_line_width(1.25);
-    let _ = context.stroke();
-}
-
 pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     context.set_operator(Operator::Source);
     context.set_source_rgba(0.0, 0.0, 0.0, 0.0);
     let _ = context.paint();
     context.set_operator(Operator::Over);
-    if state.theme.mode == DisplayMode::Full {
-        paint_panel_background(
-            context,
-            state,
-            0.5,
-            0.5,
-            f64::from(WIDTH) - 1.0,
-            f64::from(state.theme.mode.height()) - 1.0,
-            15,
-        );
-    }
-    if state.theme.mode == DisplayMode::KeysOnly {
-        fill_panel(
-            context,
-            state,
-            0.5,
-            0.5,
-            f64::from(WIDTH) - 1.0,
-            f64::from(KEY_HEIGHT) - 1.0,
-            15,
-        );
-    } else {
-        stroke_panel(
-            context,
-            state,
-            0.5,
-            0.5,
-            f64::from(WIDTH) - 1.0,
-            f64::from(KEY_HEIGHT) - 1.0,
-            3,
-        );
-    }
+    paint_panel_background(
+        context,
+        state,
+        0.5,
+        0.5,
+        f64::from(WIDTH) - 1.0,
+        f64::from(state.theme.mode.height()) - 1.0,
+        15,
+    );
     let mut shown: Vec<_> = state.history.iter().take(MAX_DISPLAY_UNITS).collect();
     shown.reverse();
     let widths: Vec<f64> = shown
@@ -403,7 +316,7 @@ pub(crate) fn draw(context: &Context, icons: &Icons, state: &AppState) {
     }
     if state.theme.mode == DisplayMode::Full {
         draw_modifier_row(context, icons, state);
-        stroke_full_outline(context, state);
+        stroke_separators(context, state);
     }
-    stroke_liquid_glass(context, state);
+    stroke_full_outline(context, state);
 }

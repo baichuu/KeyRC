@@ -56,7 +56,6 @@ fn parse(contents: &str) -> Settings {
         .unwrap_or_default();
     let colors = config.get("colors").and_then(toml::Value::as_table);
     for (key, target) in [
-        ("active_bg", &mut settings.theme.active_bg),
         ("active_fg", &mut settings.theme.active_fg),
         ("key_text", &mut settings.theme.key_text),
         ("background", &mut settings.theme.background),
@@ -183,7 +182,6 @@ liquid_glass = true
 toggle_mode = "Super+Shift+K"
 quit = "Ctrl+Escape"
 [colors]
-active_bg = "#112233"
 active_fg = "#aabbccdd"
 key_text = "invalid"
 background = "#010203"
@@ -194,7 +192,6 @@ border = "#445566"
         assert!(theme.mode == DisplayMode::KeysOnly);
         assert_eq!(theme.opacity, 0.8);
         assert!(theme.liquid_glass);
-        assert!(theme.active_bg == Color::rgb(0x11, 0x22, 0x33));
         assert_eq!(theme.active_fg.alpha, 0xdd as f64 / 255.0);
         assert!(theme.key_text == Color::rgb(255, 255, 255));
         assert!(settings.keymap.toggle_mode.key == "K");

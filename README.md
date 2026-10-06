@@ -11,7 +11,7 @@ It uses a single process and does not embed WebKit.
 
 KeyRC reads `~/.config/keyrc/config.toml`. Mode, opacity, keymap, and color
 changes apply live. The file has one mode, one opacity value, two shortcuts,
-and five colors:
+and four colors:
 
 ```toml
 [general]
@@ -24,22 +24,21 @@ toggle_mode = "Ctrl+Alt+M"
 quit = "Ctrl+Alt+Q"
 
 [colors]
-active_bg = "#121c29"
 active_fg = "#719cd6"
 key_text = "#c0c8d5"
 background = "#192330"
 border = "#252f3c"
 ```
 
-ThemeSync writes the five colors directly into this file when the desktop theme
+ThemeSync writes the four colors directly into this file when the desktop theme
 changes, preserving `[general]`, `[keymap]`, and other settings. There is no
 separate KeyRC theme file or palette import. Without ThemeSync, edit these colors
 yourself. A minimal example is in [config.example.toml](config.example.toml).
 
-All pressed modifiers share `active_bg` and `active_fg`. Inactive symbols use
-`key_text` at 35% opacity. `background` fills the key row and inactive modifier
-cells; `border` outlines them. Colors accept `#RRGGBB` or `#RRGGBBAA`; invalid or
-missing colors use black/white defaults.
+Pressed modifiers use `active_fg` without a separate active background.
+Inactive symbols use `key_text` at 35% opacity. `background` fills the popup;
+`border` draws its single outer outline and one-line separators. Colors accept
+`#RRGGBB` or `#RRGGBBAA`; invalid or missing colors use black/white defaults.
 
 `general.mode = "full"` (the default) shows the key history and modifier row at 290 × 114.
 `"keys_only"` shows only the key history at 290 × 70 with all four corners rounded.

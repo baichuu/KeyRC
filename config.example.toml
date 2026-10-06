@@ -9,7 +9,6 @@ toggle_mode = "Ctrl+Alt+M"
 quit = "Ctrl+Alt+Q"
 
 [colors]
-active_bg = "#121c29"
 active_fg = "#719cd6"
 key_text = "#c0c8d5"
 background = "#192330"
